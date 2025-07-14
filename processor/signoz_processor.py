@@ -1,6 +1,8 @@
 import logging
 import requests
+
 from processor.processor import Processor
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ class SignozApiProcessor(Processor):
             'Accept': 'application/json'
         }
         if self.__api_key:
-            self.headers['Authorization'] = f'Bearer {self.__api_key}'
+            self.headers['SIGNOZ-API-KEY'] = f'{self.__api_key}'
 
     def test_connection(self):
         try:
@@ -35,8 +37,8 @@ class SignozApiProcessor(Processor):
     def fetch_dashboards(self):
         try:
             url = f'{self.__host}/api/v1/dashboards'
-            response = requests.get(url, headers=self.headers, verify=self.__ssl_verify, timeout=30)
-            
+            response = requests.get(url, headers=self.headers, verify=self.__ssl_verify, timeout=60)
+            print(response)
             if response.status_code == 200:
                 return response.json()
             else:
@@ -96,3 +98,13 @@ class SignozApiProcessor(Processor):
         except Exception as e:
             logger.error(f"Exception when querying metrics: {e}")
             raise e
+        
+
+if __name__ == "__main__":
+    # Replace with your actual host and API key if needed
+    signoz_host = "https://microservices-signoz.demo.drdroid.io"
+    signoz_api_key = "hrCw98ObIexp5Irl36H7D+qRlnaWuoPPXknozXyBtJI="
+
+    processor = SignozApiProcessor(signoz_host, signoz_api_key)
+    dashboards = processor.fetch_dashboards()
+    print(dashboards)
