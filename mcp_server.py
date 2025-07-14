@@ -134,7 +134,37 @@ TOOLS_LIST = [
             },
             "required": ["start_time", "end_time", "query"]
         }
-    }
+    },
+    {
+        "name": "fetch_dashboard_data",
+        "description": "Fetch all panel data for a given Signoz dashboard by name and time range.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "dashboard_name": {
+                    "type": "string",
+                    "description": "The name of the dashboard to fetch data for"
+                },
+                "start_time": {
+                    "type": "number",
+                    "description": "Start time in Unix timestamp (milliseconds)"
+                },
+                "end_time": {
+                    "type": "number",
+                    "description": "End time in Unix timestamp (milliseconds)"
+                },
+                "step": {
+                    "type": "number",
+                    "description": "Step interval for the query (seconds, optional)"
+                },
+                "variables_json": {
+                    "type": "string",
+                    "description": "Optional variable overrides as a JSON object"
+                }
+            },
+            "required": ["dashboard_name", "start_time", "end_time"]
+        }
+    },
 ]
 
 def test_signoz_connection():
@@ -237,12 +267,42 @@ def query_signoz_metrics(start_time, end_time, query, step=None, aggregation=Non
             "message": f"Failed to query metrics: {str(e)}"
         }
 
+def fetch_signoz_dashboard_data(dashboard_name, start_time, end_time, step=None, variables_json=None):
+    """Fetch all panel data for a given Signoz dashboard by name and time range."""
+    try:
+        signoz_processor = current_app.config['signoz_processor']
+        result = signoz_processor.fetch_dashboard_data(
+            dashboard_name=dashboard_name,
+            start_time=start_time,
+            end_time=end_time,
+            step=step,
+            variables_json=variables_json
+        )
+        if result.get("status") == "success":
+            return {
+                "status": "success",
+                "message": f"Successfully fetched dashboard data for: {dashboard_name}",
+                "data": result
+            }
+        else:
+            return {
+                "status": "failed",
+                "message": result.get("message", "Failed to fetch dashboard data"),
+                "data": result
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to fetch dashboard data: {str(e)}"
+        }
+
 # Function mapping
 FUNCTION_MAPPING = {
     "test_connection": test_signoz_connection,
     "fetch_dashboards": fetch_signoz_dashboards,
     "fetch_dashboard_details": fetch_signoz_dashboard_details,
-    "query_metrics": query_signoz_metrics
+    "query_metrics": query_signoz_metrics,
+    "fetch_dashboard_data": fetch_signoz_dashboard_data,
 }
 
 def handle_jsonrpc_request(data):
