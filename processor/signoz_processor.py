@@ -98,13 +98,3 @@ class SignozApiProcessor(Processor):
         except Exception as e:
             logger.error(f"Exception when querying metrics: {e}")
             raise e
-        
-
-if __name__ == "__main__":
-    # Replace with your actual host and API key if needed
-    signoz_host = "https://microservices-signoz.demo.drdroid.io"
-    signoz_api_key = "hrCw98ObIexp5Irl36H7D+qRlnaWuoPPXknozXyBtJI="
-
-    processor = SignozApiProcessor(signoz_host, signoz_api_key)
-    dashboards = processor.fetch_dashboards()
-    print(dashboards)
