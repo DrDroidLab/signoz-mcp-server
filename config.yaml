@@ -1,0 +1,18 @@
+# Signoz MCP Server Configuration
+# Edit these values to match your Signoz instance
+
+signoz:
+  # Your Signoz instance URL (include http/https)
+  host: "https://your-signoz-instance.com"
+  
+  # Signoz API key if required (optional)
+  api_key: "your-signoz-api-key-here"
+  
+  # SSL verification (true/false)
+  # Set to false only if using self-signed certificates
+  ssl_verify: "true"
+
+# Server configuration
+server:
+  port: 5002
+  debug: true 
