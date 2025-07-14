@@ -54,6 +54,59 @@ TOOLS_LIST = [
             "properties": {},
             "required": []
         }
+    },
+    {
+        "name": "fetch_dashboards",
+        "description": "Fetch all available dashboards from Signoz.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "fetch_dashboard_details",
+        "description": "Fetch detailed information about a specific dashboard by ID.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "dashboard_id": {
+                    "type": "string",
+                    "description": "The ID of the dashboard to fetch details for"
+                }
+            },
+            "required": ["dashboard_id"]
+        }
+    },
+    {
+        "name": "query_metrics",
+        "description": "Query metrics from Signoz with specified time range and query parameters.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "start_time": {
+                    "type": "number",
+                    "description": "Start time in Unix timestamp (seconds or milliseconds)"
+                },
+                "end_time": {
+                    "type": "number",
+                    "description": "End time in Unix timestamp (seconds or milliseconds)"
+                },
+                "query": {
+                    "type": "string",
+                    "description": "The metrics query to execute"
+                },
+                "step": {
+                    "type": "string",
+                    "description": "Optional step interval for the query (e.g., '1m', '5m', '1h')"
+                },
+                "aggregation": {
+                    "type": "string",
+                    "description": "Optional aggregation function (e.g., 'avg', 'sum', 'min', 'max')"
+                }
+            },
+            "required": ["start_time", "end_time", "query"]
+        }
     }
 ]
 
@@ -80,9 +133,85 @@ def test_signoz_connection():
             "message": f"Connection test failed: {str(e)}"
         }
 
+# Fetch dashboards function
+def fetch_signoz_dashboards():
+    """Fetch all available dashboards from Signoz"""
+    try:
+        result = signoz_processor.fetch_dashboards()
+        if result:
+            return {
+                "status": "success",
+                "message": "Successfully fetched dashboards",
+                "data": result
+            }
+        else:
+            return {
+                "status": "failed",
+                "message": "Failed to fetch dashboards"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to fetch dashboards: {str(e)}"
+        }
+
+# Fetch dashboard details function
+def fetch_signoz_dashboard_details(dashboard_id):
+    """Fetch detailed information about a specific dashboard"""
+    try:
+        result = signoz_processor.fetch_dashboard_details(dashboard_id)
+        if result:
+            return {
+                "status": "success",
+                "message": f"Successfully fetched dashboard details for ID: {dashboard_id}",
+                "data": result
+            }
+        else:
+            return {
+                "status": "failed",
+                "message": f"Failed to fetch dashboard details for ID: {dashboard_id}"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to fetch dashboard details: {str(e)}"
+        }
+
+# Query metrics function
+def query_signoz_metrics(start_time, end_time, query, step=None, aggregation=None):
+    """Query metrics from Signoz with specified parameters"""
+    try:
+        result = signoz_processor.query_metrics(start_time, end_time, query, step, aggregation)
+        if result:
+            return {
+                "status": "success",
+                "message": "Successfully queried metrics",
+                "data": result,
+                "query_params": {
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "query": query,
+                    "step": step,
+                    "aggregation": aggregation
+                }
+            }
+        else:
+            return {
+                "status": "failed",
+                "message": "Failed to query metrics"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to query metrics: {str(e)}"
+        }
+
 # Function mapping
 FUNCTION_MAPPING = {
-    "test_connection": test_signoz_connection
+    "test_connection": test_signoz_connection,
+    "fetch_dashboards": fetch_signoz_dashboards,
+    "fetch_dashboard_details": fetch_signoz_dashboard_details,
+    "query_metrics": query_signoz_metrics
 }
 
 # Track initialization state
