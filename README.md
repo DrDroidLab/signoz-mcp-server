@@ -22,11 +22,23 @@
    ```bash
    docker build -t signoz-mcp-server .
    ```
-2. Run the container:
+2. Run the container (YAML config fallback):
    ```bash
    docker run -d \
      -p 5002:5002 \
      -v $(pwd)/config.yaml:/app/config.yaml:ro \
+     --name signoz-mcp-server \
+     signoz-mcp-server
+   ```
+3. **Or run with environment variables (recommended for CI/Docker MCP clients):**
+   ```bash
+   docker run -d \
+     -p 5002:5002 \
+     -e SIGNOZ_HOST="https://your-signoz-instance.com" \
+     -e SIGNOZ_API_KEY="your-signoz-api-key-here" \
+     -e SIGNOZ_SSL_VERIFY="true" \
+     -e MCP_SERVER_PORT=5002 \
+     -e MCP_SERVER_DEBUG=true \
      --name signoz-mcp-server \
      signoz-mcp-server
    ```
@@ -45,14 +57,24 @@
 
 ## Configuration
 
-Edit `config.yaml` to configure your Signoz instance:
+The server loads configuration in the following order of precedence:
 
-```yaml
-signoz:
-  host: "https://your-signoz-instance.com"
-  api_key: "your-signoz-api-key-here"  # Optional
-  ssl_verify: "true"
-```
+1. **Environment Variables** (recommended for Docker/CI):
+   - `SIGNOZ_HOST`: Signoz instance URL (e.g. `https://your-signoz-instance.com`)
+   - `SIGNOZ_API_KEY`: Signoz API key (optional)
+   - `SIGNOZ_SSL_VERIFY`: `true` or `false` (default: `true`)
+   - `MCP_SERVER_PORT`: Port to run the server on (default: `5002`)
+   - `MCP_SERVER_DEBUG`: `true` or `false` (default: `true`)
+2. **YAML file fallback** (`config.yaml`):
+   ```yaml
+   signoz:
+     host: "https://your-signoz-instance.com"
+     api_key: "your-signoz-api-key-here"  # Optional
+     ssl_verify: "true"
+   server:
+     port: 5002
+     debug: true
+   ```
 
 ---
 
@@ -76,7 +98,11 @@ Then add to your client configuration (e.g., `claude-desktop.json`):
     "signoz": {
       "command": "python",
       "args": ["/full/path/to/mcp_server.py"],
-      "env": {}
+      "env": {
+        "SIGNOZ_HOST": "https://your-signoz-instance.com",
+        "SIGNOZ_API_KEY": "your-signoz-api-key-here",
+        "SIGNOZ_SSL_VERIFY": "true"
+      }
     }
   }
 }
@@ -84,7 +110,7 @@ Then add to your client configuration (e.g., `claude-desktop.json`):
 - Ensure your `config.yaml` is in the same directory as `mcp_server.py` or update the path accordingly.
 - If you are using Windows, activate the environment with `env\\Scripts\\activate` instead of `source env/bin/activate`.
 
-### B. Using Docker
+### B. Using Docker (with environment variables, mcp-grafana style)
 ```json
 {
   "mcpServers": {
@@ -94,16 +120,23 @@ Then add to your client configuration (e.g., `claude-desktop.json`):
         "run",
         "--rm",
         "-i",
-        "-v",
-        "/full/path/to/config.yaml:/app/config.yaml:ro",
-        "signoz-mcp-server"
+        "-e", "SIGNOZ_HOST",
+        "-e", "SIGNOZ_API_KEY",
+        "-e", "SIGNOZ_SSL_VERIFY",
+        "signoz-mcp-server",
+        "-t", "stdio"
       ],
-      "env": {}
+      "env": {
+        "SIGNOZ_HOST": "https://your-signoz-instance.com",
+        "SIGNOZ_API_KEY": "your-signoz-api-key-here",
+        "SIGNOZ_SSL_VERIFY": "true"
+      }
     }
   }
 }
 ```
-- Adjust the volume path to your actual `config.yaml` location.
+- The `-t stdio` argument is supported for compatibility with Docker MCP clients (forces stdio handshake mode).
+- Adjust the volume path or environment variables as needed for your deployment.
 
 ### C. Connecting to an Already Running MCP Server (HTTP/SSE)
 If you have an MCP server already running (e.g., on a remote host, cloud VM, or Kubernetes), you can connect your AI assistant or tool directly to its HTTP endpoint.

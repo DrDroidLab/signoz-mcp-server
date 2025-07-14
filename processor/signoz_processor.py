@@ -19,6 +19,8 @@ class SignozApiProcessor(Processor):
         try:
             url = f'{self.__host}/api/v1/health'
             response = requests.get(url, headers=self.headers, verify=self.__ssl_verify, timeout=20)
+            print(f"Response: {response.text}")
+            logger.info(f"Response: {response.text}")
             if response and response.status_code == 200:
                 return True
             else:
