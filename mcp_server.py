@@ -197,7 +197,14 @@ def mcp_endpoint():
             # Format result according to MCP spec
             return jsonify({
                 "jsonrpc": "2.0",
-                "result": result,
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": json.dumps(result, indent=2)
+                        }
+                    ]
+                },
                 "id": request_id
             })
         except Exception as e:
