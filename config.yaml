@@ -3,10 +3,10 @@
 
 signoz:
   # Your Signoz instance URL (include http/https)
-  host: "https://your-signoz-instance.com"
+  host: "https://microservices-signoz.demo.drdroid.io"
   
   # Signoz API key if required (optional)
-  api_key: "your-signoz-api-key-here"
+  api_key: "hrCw98ObIexp5Irl36H7D+qRlnaWuoPPXknozXyBtJI="
   
   # SSL verification (true/false)
   # Set to false only if using self-signed certificates
@@ -14,5 +14,5 @@ signoz:
 
 # Server configuration
 server:
-  port: 5002
+  port: 8000
   debug: true 

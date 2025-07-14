@@ -8,16 +8,41 @@ from processor.signoz_processor import SignozApiProcessor
 app = Flask(__name__)
 logger = logging.getLogger(__name__)
 
-# Load configuration from YAML file
+# Load configuration from environment variables, then YAML as fallback
 def load_config():
     config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
+    config = {}
+    # Try to load YAML config as fallback
     try:
         with open(config_path, 'r') as file:
-            return yaml.safe_load(file)
+            config = yaml.safe_load(file)
     except FileNotFoundError:
-        raise Exception(f"Configuration file not found at {config_path}")
+        config = {}
     except yaml.YAMLError as e:
         raise Exception(f"Error parsing YAML configuration: {e}")
+
+    # Environment variable overrides
+    signoz_host = os.environ.get('SIGNOZ_HOST') or (config.get('signoz', {}).get('host') if config.get('signoz') else None)
+    signoz_api_key = os.environ.get('SIGNOZ_API_KEY') or (config.get('signoz', {}).get('api_key') if config.get('signoz') else None)
+    signoz_ssl_verify = os.environ.get('SIGNOZ_SSL_VERIFY') or (config.get('signoz', {}).get('ssl_verify', 'true') if config.get('signoz') else 'true')
+    server_port = int(os.environ.get('MCP_SERVER_PORT') or (config.get('server', {}).get('port', 8000) if config.get('server') else 8000))
+    server_debug = os.environ.get('MCP_SERVER_DEBUG')
+    if server_debug is not None:
+        server_debug = server_debug.lower() in ['1', 'true', 'yes']
+    else:
+        server_debug = config.get('server', {}).get('debug', True) if config.get('server') else True
+
+    return {
+        'signoz': {
+            'host': signoz_host,
+            'api_key': signoz_api_key,
+            'ssl_verify': signoz_ssl_verify
+        },
+        'server': {
+            'port': server_port,
+            'debug': server_debug
+        }
+    }
 
 # Initialize configuration
 config = load_config()
@@ -232,6 +257,6 @@ def health_check():
     return jsonify({"status": "ok"})
 
 if __name__ == '__main__':
-    port = config.get('server', {}).get('port', 5002)
+    port = config.get('server', {}).get('port', 8000)
     debug = config.get('server', {}).get('debug', True)
     app.run(host='0.0.0.0', port=port, debug=debug) 
