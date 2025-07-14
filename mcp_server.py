@@ -147,11 +147,11 @@ TOOLS_LIST = [
                 },
                 "start_time": {
                     "type": "number",
-                    "description": "Start time in Unix timestamp (milliseconds)"
+                    "description": "Start time for the query in Unix timestamp (milliseconds)"
                 },
                 "end_time": {
                     "type": "number",
-                    "description": "End time in Unix timestamp (milliseconds)"
+                    "description": "End time for the query in Unix timestamp (milliseconds)"
                 },
                 "step": {
                     "type": "number",

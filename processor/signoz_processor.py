@@ -145,7 +145,7 @@ class SignozApiProcessor(Processor):
         """Execute a Clickhouse SQL query using the Signoz query range API"""
         try:
             logger.debug(f"Executing Clickhouse query with payload: {query_payload}")
-            
+            print(f"Executing query with payload: {query_payload}")
             response = requests.post(
                 f"{self.__host}/api/v4/query_range",
                 headers=self.headers,
@@ -184,6 +184,8 @@ class SignozApiProcessor(Processor):
                 return {"status": "error", "message": f"Dashboard details not found for '{dashboard_name}'"}
             # Panels are nested under 'data' in the dashboard details
             panels = dashboard_details.get("data", {}).get("widgets", [])
+            print(f"dashboard_details: {dashboard_details.get('data', {})}")
+            print(f"panels: {panels}")
             if not panels:
                 return {"status": "error", "message": f"No panels found in dashboard '{dashboard_name}'"}
             # Parse variables
@@ -201,12 +203,19 @@ class SignozApiProcessor(Processor):
             panel_results = {}
             print(f"panels: {panels}")
             for panel in panels:
-                # Panel title and queries are nested in the panel dict
                 panel_title = panel.get("title") or f"Panel_{panel.get('id', '')}"
-                panel_type = panel.get("panelType") or panel.get("type") or "graph"
-                queries = panel.get("queries") or []
+                panel_type = panel.get("panelTypes") or panel.get("panelType") or panel.get("type") or "graph"
+                queries = []
+                # Only process builder queries
+                if (
+                    isinstance(panel.get("query"), dict)
+                    and panel["query"].get("queryType") == "builder"
+                    and isinstance(panel["query"].get("builder"), dict)
+                    and isinstance(panel["query"]["builder"].get("queryData"), list)
+                ):
+                    queries = panel["query"]["builder"]["queryData"]
                 if not queries:
-                    panel_results[panel_title] = {"status": "skipped", "message": "No queries in panel"}
+                    panel_results[panel_title] = {"status": "skipped", "message": "No builder queries in panel"}
                     continue
                 built_queries = {}
                 for query_data in queries:
@@ -215,9 +224,8 @@ class SignozApiProcessor(Processor):
                     letter, query_dict = query_builder.build_query_dict(query_data)
                     built_queries[letter] = query_dict
                 if not built_queries:
-                    panel_results[panel_title] = {"status": "skipped", "message": "No valid queries in panel"}
+                    panel_results[panel_title] = {"status": "skipped", "message": "No valid builder queries in panel"}
                     continue
-                print(f"built_queries: {built_queries}")
                 payload = query_builder.build_panel_payload(panel_type, built_queries, start_time, end_time)
                 try:
                     result = self.execute_signoz_query(payload)
