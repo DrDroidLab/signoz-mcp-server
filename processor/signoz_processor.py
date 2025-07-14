@@ -30,17 +30,25 @@ class SignozDashboardQueryBuilder:
         query_dict["queryName"] = current_letter
         query_dict["expression"] = current_letter
         query_dict["disabled"] = query_dict.get("disabled", False)
+        # Add pageSize for metrics queries
+        if query_dict.get("dataSource") == "metrics":
+            query_dict["pageSize"] = 10
         return current_letter, query_dict
 
     def build_panel_payload(self, panel_type, panel_queries, start_time, end_time):
+        # Ensure timestamps are in milliseconds
+        def to_ms(ts):
+            return int(ts * 1000) if ts < 1e12 else int(ts)
         payload = {
-            "start": int(start_time),
-            "end": int(end_time),
+            "start": to_ms(start_time),
+            "end": to_ms(end_time),
             "step": self.global_step,
             "variables": self.variables,
+            "formatForWeb": False,
             "compositeQuery": {
                 "queryType": "builder",
                 "panelType": panel_type,
+                "fillGaps": False,
                 "builderQueries": panel_queries,
             },
         }
