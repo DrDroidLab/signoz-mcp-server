@@ -4,6 +4,8 @@ import os
 import json
 import yaml
 from processor.signoz_processor import SignozApiProcessor
+import sys
+from stdio_server import run_stdio_server
 
 app = Flask(__name__)
 logger = logging.getLogger(__name__)
@@ -113,6 +115,116 @@ FUNCTION_MAPPING = {
 # Track initialization state
 initialized = False
 
+def handle_jsonrpc_request(data):
+    global initialized
+    request_id = data.get("id")
+    method = data.get("method")
+    params = data.get("params", {})
+
+    # Handle JSON-RPC notifications (no id field or method starts with 'notifications/')
+    if method and method.startswith('notifications/'):
+        logger.info(f"Received notification: {method}")
+        return {"jsonrpc": "2.0", "result": {}, "id": request_id}
+
+    # Handle initialization
+    if method == "initialize":
+        client_protocol_version = params.get("protocolVersion")
+        if client_protocol_version != PROTOCOL_VERSION:
+            return {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32602,
+                    "message": f"Unsupported protocol version: {client_protocol_version}. Server supports: {PROTOCOL_VERSION}"
+                },
+                "id": request_id
+            }
+        initialized = True
+        return {
+            "jsonrpc": "2.0",
+            "result": {
+                "protocolVersion": PROTOCOL_VERSION,
+                "capabilities": SERVER_CAPABILITIES,
+                "serverInfo": SERVER_INFO
+            },
+            "id": request_id
+        }
+
+    # Check if server is initialized for other methods
+    if not initialized and method != "initialize":
+        return {
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32002,
+                "message": "Server not initialized. Call initialize first."
+            },
+            "id": request_id
+        }
+
+    # Handle tools/list
+    if method == "tools/list":
+        return {
+            "jsonrpc": "2.0",
+            "result": {"tools": TOOLS_LIST},
+            "id": request_id
+        }
+
+    # Handle tools/call
+    if method == "tools/call":
+        tool_name = params.get("name")
+        arguments = params.get("arguments", {})
+        if not tool_name:
+            return {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32602,
+                    "message": "Invalid params: 'name' is required for tool execution"
+                },
+                "id": request_id
+            }
+        if tool_name not in FUNCTION_MAPPING:
+            return {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32601,
+                    "message": f"Tool not found: {tool_name}"
+                },
+                "id": request_id
+            }
+        try:
+            func = FUNCTION_MAPPING[tool_name]
+            result = func(**arguments)
+            return {
+                "jsonrpc": "2.0",
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": json.dumps(result, indent=2)
+                        }
+                    ]
+                },
+                "id": request_id
+            }
+        except Exception as e:
+            return {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32000,
+                    "message": f"Error executing tool: {str(e)}"
+                },
+                "id": request_id
+            }
+
+    # Unknown method
+    return {
+        "jsonrpc": "2.0",
+        "error": {
+            "code": -32601,
+            "message": f"Method not found: {method}"
+        },
+        "id": request_id
+    }
+
 @app.route('/mcp', methods=['POST', 'GET'])
 def mcp_endpoint():
     global initialized
@@ -129,134 +241,32 @@ def mcp_endpoint():
 
     if not data:
         return jsonify({
-            "jsonrpc": "2.0", 
-            "error": {"code": -32700, "message": "Parse error"}, 
+            "jsonrpc": "2.0",
+            "error": {"code": -32700, "message": "Parse error"},
             "id": None
         }), 400
 
-    request_id = data.get("id")
-    method = data.get("method")
-    params = data.get("params", {})
-
-    # Handle JSON-RPC notifications (no id field or method starts with 'notifications/')
-    if method and method.startswith('notifications/'):
-        # Log and return 200 OK with empty result
-        logger.info(f"Received notification: {method}")
-        return jsonify({}), 200
-
-    # Handle initialization
-    if method == "initialize":
-        client_protocol_version = params.get("protocolVersion")
-        
-        # Validate protocol version
-        if client_protocol_version != PROTOCOL_VERSION:
-            return jsonify({
-                "jsonrpc": "2.0",
-                "error": {
-                    "code": -32602,
-                    "message": f"Unsupported protocol version: {client_protocol_version}. Server supports: {PROTOCOL_VERSION}"
-                },
-                "id": request_id
-            }), 400
-        
-        initialized = True
-        
-        return jsonify({
-            "jsonrpc": "2.0",
-            "result": {
-                "protocolVersion": PROTOCOL_VERSION,
-                "capabilities": SERVER_CAPABILITIES,
-                "serverInfo": SERVER_INFO
-            },
-            "id": request_id
-        })
-
-    # Check if server is initialized for other methods
-    if not initialized and method != "initialize":
-        return jsonify({
-            "jsonrpc": "2.0",
-            "error": {
-                "code": -32002,
-                "message": "Server not initialized. Call initialize first."
-            },
-            "id": request_id
-        }), 400
-
-    # Handle tools/list
-    if method == "tools/list":
-        return jsonify({
-            "jsonrpc": "2.0",
-            "result": {"tools": TOOLS_LIST},
-            "id": request_id
-        })
-
-    # Handle tools/call
-    if method == "tools/call":
-        tool_name = params.get("name")
-        arguments = params.get("arguments", {})
-
-        if not tool_name:
-            return jsonify({
-                "jsonrpc": "2.0", 
-                "error": {
-                    "code": -32602, 
-                    "message": "Invalid params: 'name' is required for tool execution"
-                }, 
-                "id": request_id
-            }), 400
-
-        if tool_name not in FUNCTION_MAPPING:
-            return jsonify({
-                "jsonrpc": "2.0", 
-                "error": {
-                    "code": -32601, 
-                    "message": f"Tool not found: {tool_name}"
-                }, 
-                "id": request_id
-            }), 404
-
-        try:
-            func = FUNCTION_MAPPING[tool_name]
-            result = func(**arguments)
-            
-            # Format result according to MCP spec
-            return jsonify({
-                "jsonrpc": "2.0",
-                "result": {
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": json.dumps(result, indent=2)
-                        }
-                    ]
-                },
-                "id": request_id
-            })
-        except Exception as e:
-            return jsonify({
-                "jsonrpc": "2.0",
-                "error": {
-                    "code": -32000,
-                    "message": f"Error executing tool: {str(e)}"
-                },
-                "id": request_id
-            }), 500
-
-    # Unknown method
-    return jsonify({
-        "jsonrpc": "2.0",
-        "error": {
-            "code": -32601,
-            "message": f"Method not found: {method}"
-        },
-        "id": request_id
-    }), 404
+    response = handle_jsonrpc_request(data)
+    status_code = 200
+    if "error" in response:
+        # Map error codes to HTTP status codes
+        code = response["error"].get("code", -32000)
+        if code == -32700 or code == -32600 or code == -32602:
+            status_code = 400
+        elif code == -32601:
+            status_code = 404
+        else:
+            status_code = 500
+    return jsonify(response), status_code
 
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "ok"})
 
 if __name__ == '__main__':
-    port = config.get('server', {}).get('port', 8000)
-    debug = config.get('server', {}).get('debug', True)
-    app.run(host='0.0.0.0', port=port, debug=debug) 
+    if '-t' in sys.argv and 'stdio' in sys.argv:
+        run_stdio_server(handle_jsonrpc_request)
+    else:
+        port = config.get('server', {}).get('port', 8000)
+        debug = config.get('server', {}).get('debug', True)
+        app.run(host='0.0.0.0', port=port, debug=debug) 
