@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify, make_response, current_app
 import logging
 import os
 import json
@@ -46,16 +46,16 @@ def load_config():
         }
     }
 
-# Initialize configuration
-config = load_config()
-signoz_config = config.get('signoz', {})
-
-# Initialize Signoz processor
-signoz_processor = SignozApiProcessor(
-    signoz_host=signoz_config.get('host'),
-    signoz_api_key=signoz_config.get('api_key'),
-    ssl_verify=signoz_config.get('ssl_verify', 'true')
-)
+# Initialize configuration and processor at app startup
+with app.app_context():
+    config = load_config()
+    app.config['SIGNOZ_CONFIG'] = config.get('signoz', {})
+    app.config['SERVER_CONFIG'] = config.get('server', {})
+    app.config['signoz_processor'] = SignozApiProcessor(
+        signoz_host=app.config['SIGNOZ_CONFIG'].get('host'),
+        signoz_api_key=app.config['SIGNOZ_CONFIG'].get('api_key'),
+        ssl_verify=app.config['SIGNOZ_CONFIG'].get('ssl_verify', 'true')
+    )
 
 # Server info
 SERVER_INFO = {
@@ -84,11 +84,12 @@ TOOLS_LIST = [
     }
 ]
 
-# Test connection function
 def test_signoz_connection():
     """Test connection to Signoz API"""
     try:
-        result = signoz_processor.test_connection()
+        processor = current_app.config['signoz_processor']
+        signoz_config = current_app.config['SIGNOZ_CONFIG']
+        result = processor.test_connection()
         if result:
             return {
                 "status": "success",
@@ -107,16 +108,11 @@ def test_signoz_connection():
             "message": f"Connection test failed: {str(e)}"
         }
 
-# Function mapping
 FUNCTION_MAPPING = {
     "test_connection": test_signoz_connection
 }
 
-# Track initialization state
-initialized = False
-
 def handle_jsonrpc_request(data):
-    global initialized
     request_id = data.get("id")
     method = data.get("method")
     params = data.get("params", {})
@@ -126,7 +122,7 @@ def handle_jsonrpc_request(data):
         logger.info(f"Received notification: {method}")
         return {"jsonrpc": "2.0", "result": {}, "id": request_id}
 
-    # Handle initialization
+    # Handle initialization (stateless: just validate and return capabilities)
     if method == "initialize":
         client_protocol_version = params.get("protocolVersion")
         if client_protocol_version != PROTOCOL_VERSION:
@@ -138,24 +134,12 @@ def handle_jsonrpc_request(data):
                 },
                 "id": request_id
             }
-        initialized = True
         return {
             "jsonrpc": "2.0",
             "result": {
                 "protocolVersion": PROTOCOL_VERSION,
                 "capabilities": SERVER_CAPABILITIES,
                 "serverInfo": SERVER_INFO
-            },
-            "id": request_id
-        }
-
-    # Check if server is initialized for other methods
-    if not initialized and method != "initialize":
-        return {
-            "jsonrpc": "2.0",
-            "error": {
-                "code": -32002,
-                "message": "Server not initialized. Call initialize first."
             },
             "id": request_id
         }
@@ -227,8 +211,6 @@ def handle_jsonrpc_request(data):
 
 @app.route('/mcp', methods=['POST', 'GET'])
 def mcp_endpoint():
-    global initialized
-
     if request.method == 'GET':
         # Return a friendly message or 405 for GET requests
         return make_response(jsonify({
@@ -267,6 +249,6 @@ if __name__ == '__main__':
     if '-t' in sys.argv and 'stdio' in sys.argv:
         run_stdio_server(handle_jsonrpc_request)
     else:
-        port = config.get('server', {}).get('port', 8000)
-        debug = config.get('server', {}).get('debug', True)
+        port = app.config['SERVER_CONFIG'].get('port', 8000)
+        debug = app.config['SERVER_CONFIG'].get('debug', True)
         app.run(host='0.0.0.0', port=port, debug=debug) 
