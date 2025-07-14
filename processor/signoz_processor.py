@@ -188,18 +188,43 @@ class SignozApiProcessor(Processor):
                     pass
         return 60  # default
 
+    def _post_query_range(self, payload):
+        """
+        Helper method to POST to /api/v4/query_range and handle response.
+        """
+        url = f'{self.__host}/api/v4/query_range'
+        print(f"Querying: {payload}")
+        print(f"URL: {url}")
+        try:
+            response = requests.post(
+                url,
+                headers=self.headers,
+                json=payload,
+                verify=self.__ssl_verify,
+                timeout=30
+            )
+            if response.status_code == 200:
+                try:
+                    resp_json = response.json()
+                    print('response json:::', resp_json)
+                    return resp_json
+                except Exception as e:
+                    logger.error(f"Failed to parse JSON: {e}, response text: {response.text}")
+                    return {"error": f"Failed to parse JSON: {e}", "raw_response": response.text}
+            else:
+                logger.error(f"Failed to query metrics: {response.status_code} - {response.text}")
+                return {"error": f"HTTP {response.status_code}", "raw_response": response.text}
+        except Exception as e:
+            logger.error(f"Exception when posting to query_range: {e}")
+            raise e
+
     def query_metrics(self, start_time, end_time, query, step=None, aggregation=None):
         try:
-            url = f'{self.__host}/api/v4/query_range'
-
             from_time = int(start_time * 1000) if start_time < 1e12 else int(start_time)
             to_time = int(end_time * 1000) if end_time < 1e12 else int(end_time)
-
             step_val = self._parse_step(step) if step else 60
-
             if not query or not isinstance(query, str) or not query.strip():
                 return {"error": "Query string is required and must be non-empty."}
-
             payload = {
                 "start": from_time,
                 "end": to_time,
@@ -212,27 +237,7 @@ class SignozApiProcessor(Processor):
                     }
                 }
             }
-
-            print(f"Querying: {payload}")
-            print(f"URL: {url}")
-
-            response = requests.post(
-                url,
-                headers=self.headers,
-                json=payload,
-                verify=self.__ssl_verify,
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                try:
-                    return response.json()
-                except Exception as e:
-                    logger.error(f"Failed to parse JSON: {e}, response text: {response.text}")
-                    return {"error": f"Failed to parse JSON: {e}", "raw_response": response.text}
-            else:
-                logger.error(f"Failed to query metrics: {response.status_code} - {response.text}")
-                return {"error": f"HTTP {response.status_code}", "raw_response": response.text}
+            return self._post_query_range(payload)
         except Exception as e:
             logger.error(f"Exception when querying metrics: {e}")
             raise e
@@ -327,27 +332,7 @@ class SignozApiProcessor(Processor):
                 "builderQueries": builder_queries
             }
         }
-        url = f'{self.__host}/api/v4/query_range'
-        print(f"Querying: {payload}")
-        print(f"URL: {url}")
-        response = requests.post(
-            url,
-            headers=self.headers,
-            json=payload,
-            verify=self.__ssl_verify,
-            timeout=30
-        )
-        if response.status_code == 200:
-            try:
-                resp_json = response.json()
-                print('response json:::',resp_json)
-                return resp_json
-            except Exception as e:
-                logger.error(f"Failed to parse JSON: {e}, response text: {response.text}")
-                return {"error": f"Failed to parse JSON: {e}", "raw_response": response.text}
-        else:
-            logger.error(f"Failed to query metrics: {response.status_code} - {response.text}")
-            return {"error": f"HTTP {response.status_code}", "raw_response": response.text}
+        return self._post_query_range(payload)
         
 
 # if __name__ == "__main__":
