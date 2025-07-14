@@ -23,11 +23,7 @@ RUN useradd -m -u 1000 mcp && chown -R mcp:mcp /app
 USER mcp
 
 # Expose the port
-EXPOSE 5002
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5002/health || exit 1
+EXPOSE 8000
 
 # Run the application
-CMD ["python", "mcp_server.py"] 
+ENTRYPOINT ["python", "mcp_server.py"]
