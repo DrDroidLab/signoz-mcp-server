@@ -99,8 +99,7 @@ You can integrate this MCP server with any tool that supports the MCP protocol. 
 Before running the server locally, install dependencies and run with uv:
 
 ```bash
-uv pip install -r requirements.txt
-uv run src/signoz_mcp_server/mcp_server.py
+uv sync
 ```
 
 Then add to your client configuration (e.g., `claude-desktop.json`):
