@@ -261,9 +261,12 @@ class SignozApiProcessor(Processor):
     def _parse_time(self, time_str):
         """
         Parse a time string in RFC3339, 'now', or 'now-2h', 'now-30m', etc. Returns a UTC datetime.
+        Logs errors if parsing fails.
         """
         if not time_str or not isinstance(time_str, str):
+            logger.error(f"_parse_time: Invalid input (not a string): {time_str}")
             return None
+        time_str_orig = time_str
         time_str = time_str.strip().lower()
         if time_str.startswith('now'):
             if '-' in time_str:
@@ -281,15 +284,22 @@ class SignozApiProcessor(Processor):
                         delta = timedelta(days=value)
                     else:
                         delta = timedelta()
+                    logger.debug(f"_parse_time: Parsed relative time '{time_str_orig}' as now - {value}{unit}")
                     return datetime.now(timezone.utc) - delta
+            logger.debug(f"_parse_time: Parsed 'now' as current UTC time for input '{time_str_orig}'")
             return datetime.now(timezone.utc)
         else:
             try:
-                dt = dateparser.parse(time_str)
+                dt = dateparser.parse(time_str_orig)
+                if dt is None:
+                    logger.error(f"_parse_time: dateparser.parse returned None for input '{time_str_orig}'")
+                    return None
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=timezone.utc)
+                logger.debug(f"_parse_time: Successfully parsed '{time_str_orig}' as {dt.isoformat()}")
                 return dt.astimezone(timezone.utc)
-            except Exception:
+            except Exception as e:
+                logger.error(f"_parse_time: Exception parsing '{time_str_orig}': {e}")
                 return None
 
     def _post_query_range(self, payload):
