@@ -3,6 +3,7 @@ import logging
 import re
 
 import requests
+
 from signoz_mcp_server.processor.processor import Processor
 
 logger = logging.getLogger(__name__)
