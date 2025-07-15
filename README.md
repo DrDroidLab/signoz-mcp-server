@@ -20,7 +20,8 @@ uv sync
 
 #### 2. Run the server with uv
 ```bash
-uv run src/signoz_mcp_server/mcp_server.py
+cd src
+uv run -m signoz_mcp_server.mcp_server
 ```
 - You can also use `uv` to run any other entrypoint scripts as needed.
 - Make sure your `config.yaml` is in the same directory as `mcp_server.py` or set the required environment variables (see Configuration section).
