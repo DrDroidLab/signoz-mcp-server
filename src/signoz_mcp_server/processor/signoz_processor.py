@@ -2,9 +2,9 @@ import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from dateutil import parser as dateparser
 
 import requests
+from dateutil import parser as dateparser
 
 from signoz_mcp_server.processor.processor import Processor
 
@@ -254,8 +254,8 @@ class SignozApiProcessor(Processor):
             # fallback: try to parse as integer minutes
             value = int(duration_str)
             return value * 60 * 1000
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"_parse_duration: Exception parsing '{duration_str}': {e}")
         return None
 
     def _parse_time(self, time_str):
@@ -268,19 +268,19 @@ class SignozApiProcessor(Processor):
             return None
         time_str_orig = time_str
         time_str = time_str.strip().lower()
-        if time_str.startswith('now'):
-            if '-' in time_str:
+        if time_str.startswith("now"):
+            if "-" in time_str:
                 match = re.match(r"now-(\d+)([smhd])", time_str)
                 if match:
                     value, unit = match.groups()
                     value = int(value)
-                    if unit == 's':
+                    if unit == "s":
                         delta = timedelta(seconds=value)
-                    elif unit == 'm':
+                    elif unit == "m":
                         delta = timedelta(minutes=value)
-                    elif unit == 'h':
+                    elif unit == "h":
                         delta = timedelta(hours=value)
-                    elif unit == 'd':
+                    elif unit == "d":
                         delta = timedelta(days=value)
                     else:
                         delta = timedelta()

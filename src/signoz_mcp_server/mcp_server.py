@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import sys
-from time import timezone
 
 import yaml
 from flask import Flask, current_app, jsonify, make_response, request
@@ -114,8 +113,14 @@ TOOLS_LIST = [
             "type": "object",
             "properties": {
                 "dashboard_name": {"type": "string", "description": "The name of the dashboard to fetch data for"},
-                "start_time": {"type": "string", "description": "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"},
-                "end_time": {"type": "string", "description": "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"},
+                "start_time": {"type": "string", "description": (
+                    "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
+                    "or duration string (e.g., '2h', '90m')"
+                )},
+                "end_time": {"type": "string", "description": (
+                    "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
+                    "or duration string (e.g., '2h', '90m')"
+                )},
                 "step": {"type": "number", "description": "Step interval for the query (seconds, optional)"},
                 "variables_json": {"type": "string", "description": "Optional variable overrides as a JSON object"},
                 "duration": {"type": "string", "description": "Duration string for the time window (e.g., '2h', '90m')"},
@@ -125,15 +130,30 @@ TOOLS_LIST = [
     },
     {
         "name": "fetch_apm_metrics",
-        "description": f"Fetch standard APM metrics (request rate, error rate, latency, apdex, etc.) for a given service and time range. Current datetime is {get_current_time_iso()}",
+        "description": (
+            f"Fetch standard APM metrics (request rate, error rate, latency, apdex, etc.) for a given service and time range. "
+            f"Current datetime is {get_current_time_iso()}"
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "service_name": {"type": "string", "description": "The name of the service to fetch APM metrics for"},
-                "start_time": {"type": "string", "description": "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"},
-                "end_time": {"type": "string", "description": "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"},
-                "window": {"type": "string", "description": "Query window (e.g., '1m', '5m'). Default: '1m'", "default": "1m"},
-                "duration": {"type": "string", "description": "Duration string for the time window (e.g., '2h', '90m')"},
+                "start_time": {"type": "string", "description": (
+                    "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
+                    "or duration string (e.g., '2h', '90m')"
+                )},
+                "end_time": {"type": "string", "description": (
+                    "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
+                    "or duration string (e.g., '2h', '90m')"
+                )},
+                "window": {
+                    "type": "string",
+                    "description": "Query window (e.g., '1m', '5m'). Default: '1m'",
+                    "default": "1m",
+                },
+                "duration": {"type": "string", "description": (
+                    "Duration string for the time window (e.g., '2h', '90m')"
+                )},
             },
             "required": ["service_name"],
         },
@@ -230,7 +250,9 @@ def fetch_signoz_dashboard_data(dashboard_name, start_time=None, end_time=None, 
 
 
 def fetch_signoz_apm_metrics(service_name, start_time=None, end_time=None, window="1m", duration=None):
-    """Fetch standard APM metrics for a given service and time range. Accepts start_time and end_time as RFC3339 or relative strings (e.g., 'now-2h'), or a duration string (e.g., '2h', '90m'). Defaults to last 3 hours if not provided."""
+    """Fetch standard APM metrics for a given service and time range. Accepts start_time and end_time as RFC3339 or relative strings
+    (e.g., 'now-2h'), or a duration string (e.g., '2h', '90m'). Defaults to last 3 hours if not provided.
+    """
     try:
         signoz_processor = current_app.config["signoz_processor"]
         result = signoz_processor.fetch_apm_metrics(service_name, start_time, end_time, window, duration=duration)
@@ -350,7 +372,7 @@ def main():
     else:
         port = app.config["SERVER_CONFIG"].get("port", 8000)
         debug = app.config["SERVER_CONFIG"].get("debug", True)
-        app.run(host="0.0.0.0", port=port, debug=debug)
+        app.run(host="0.0.0.0", port=port, debug=debug)  # noqa: S104
 
 if __name__ == "__main__":
     main()
