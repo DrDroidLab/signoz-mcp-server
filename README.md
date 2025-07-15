@@ -15,7 +15,7 @@
    ```bash
    docker-compose up -d
    ```
-   - The server will run in HTTP (SSE) mode on port 5002 by default.
+   - The server will run in HTTP (SSE) mode on port 8000 by default.
 
 #### B. Docker Image (Manual)
 1. Build the image:
@@ -25,7 +25,7 @@
 2. Run the container (YAML config fallback):
    ```bash
    docker run -d \
-     -p 5002:5002 \
+     -p 8000:8000 \
      -v $(pwd)/config.yaml:/app/config.yaml:ro \
      --name signoz-mcp-server \
      signoz-mcp-server
@@ -33,11 +33,11 @@
 3. **Or run with environment variables (recommended for CI/Docker MCP clients):**
    ```bash
    docker run -d \
-     -p 5002:5002 \
+     -p 8000:8000 \
      -e SIGNOZ_HOST="https://your-signoz-instance.com" \
      -e SIGNOZ_API_KEY="your-signoz-api-key-here" \
      -e SIGNOZ_SSL_VERIFY="true" \
-     -e MCP_SERVER_PORT=5002 \
+     -e MCP_SERVER_PORT=8000 \
      -e MCP_SERVER_DEBUG=true \
      --name signoz-mcp-server \
      signoz-mcp-server
@@ -63,7 +63,7 @@ The server loads configuration in the following order of precedence:
    - `SIGNOZ_HOST`: Signoz instance URL (e.g. `https://your-signoz-instance.com`)
    - `SIGNOZ_API_KEY`: Signoz API key (optional)
    - `SIGNOZ_SSL_VERIFY`: `true` or `false` (default: `true`)
-   - `MCP_SERVER_PORT`: Port to run the server on (default: `5002`)
+   - `MCP_SERVER_PORT`: Port to run the server on (default: `8000`)
    - `MCP_SERVER_DEBUG`: `true` or `false` (default: `true`)
 2. **YAML file fallback** (`config.yaml`):
    ```yaml
@@ -72,7 +72,7 @@ The server loads configuration in the following order of precedence:
      api_key: "your-signoz-api-key-here"  # Optional
      ssl_verify: "true"
    server:
-     port: 5002
+     port: 8000
      debug: true
    ```
 
@@ -146,21 +146,25 @@ If you have an MCP server already running (e.g., on a remote host, cloud VM, or 
 {
   "mcpServers": {
     "signoz": {
-      "type": "http",
-      "url": "http://your-server-host:5002/mcp"
+      "url": "http://your-server-host:8000/mcp"
     }
   }
 }
 ```
-- Replace `http://your-server-host:5002/mcp` with the actual URL of your running MCP server instance.
+- Replace `your-server-host` with the actual host where your MCP server is running.
+- **For local setup, use `localhost` as the server host (i.e., `http://localhost:8000/mcp`).**
+- **Use `http` for local or unsecured deployments, and `https` for production or secured deployments.**
 - Make sure the server is accessible from your client machine (check firewall, security group, etc.).
 
 #### Example: MCP Config YAML
 ```yaml
 mcp:
-  endpoint: "http://your-server-host:5002/mcp"
+  endpoint: "http://your-server-host:8000/mcp"
   protocolVersion: "2025-06-18"
 ```
+- Replace `your-server-host` with the actual host where your MCP server is running.
+- **For local setup, use `localhost` as the server host (i.e., `http://localhost:8000/mcp`).**
+- **Use `http` or `https` in the URL schema depending on how you've deployed the MCP server.**
 - No need to specify `command` or `args`—just point to the HTTP endpoint.
 - This works for any tool or assistant that supports MCP over HTTP.
 - The server must be running in HTTP (SSE) mode (the default for this implementation).
@@ -179,9 +183,9 @@ The following tools are available via the MCP server:
 
 ## Health Check
 ```bash
-curl http://localhost:5002/health
+curl http://localhost:8000/health
 ```
-The server runs on port 5002 by default.
+The server runs on port 8000 by default.
 
 ---
 
