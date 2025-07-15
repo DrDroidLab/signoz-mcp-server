@@ -1,6 +1,8 @@
 import json
 import logging
 import re
+from datetime import datetime, timedelta, timezone
+from dateutil import parser as dateparser
 
 import requests
 
@@ -236,6 +238,70 @@ class SignozApiProcessor(Processor):
                     pass
         return 60  # default
 
+    def _parse_duration(self, duration_str):
+        """Parse duration string like '2h', '90m' into milliseconds."""
+        if not duration_str or not isinstance(duration_str, str):
+            return None
+        match = re.match(r"^(\d+)([hm])$", duration_str.strip().lower())
+        if match:
+            value, unit = match.groups()
+            value = int(value)
+            if unit == "h":
+                return value * 60 * 60 * 1000
+            elif unit == "m":
+                return value * 60 * 1000
+        try:
+            # fallback: try to parse as integer minutes
+            value = int(duration_str)
+            return value * 60 * 1000
+        except Exception:
+            pass
+        return None
+
+    def _parse_time(self, time_str):
+        """
+        Parse a time string in RFC3339, 'now', or 'now-2h', 'now-30m', etc. Returns a UTC datetime.
+        Logs errors if parsing fails.
+        """
+        if not time_str or not isinstance(time_str, str):
+            logger.error(f"_parse_time: Invalid input (not a string): {time_str}")
+            return None
+        time_str_orig = time_str
+        time_str = time_str.strip().lower()
+        if time_str.startswith('now'):
+            if '-' in time_str:
+                match = re.match(r"now-(\d+)([smhd])", time_str)
+                if match:
+                    value, unit = match.groups()
+                    value = int(value)
+                    if unit == 's':
+                        delta = timedelta(seconds=value)
+                    elif unit == 'm':
+                        delta = timedelta(minutes=value)
+                    elif unit == 'h':
+                        delta = timedelta(hours=value)
+                    elif unit == 'd':
+                        delta = timedelta(days=value)
+                    else:
+                        delta = timedelta()
+                    logger.debug(f"_parse_time: Parsed relative time '{time_str_orig}' as now - {value}{unit}")
+                    return datetime.now(timezone.utc) - delta
+            logger.debug(f"_parse_time: Parsed 'now' as current UTC time for input '{time_str_orig}'")
+            return datetime.now(timezone.utc)
+        else:
+            try:
+                dt = dateparser.parse(time_str_orig)
+                if dt is None:
+                    logger.error(f"_parse_time: dateparser.parse returned None for input '{time_str_orig}'")
+                    return None
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                logger.debug(f"_parse_time: Successfully parsed '{time_str_orig}' as {dt.isoformat()}")
+                return dt.astimezone(timezone.utc)
+            except Exception as e:
+                logger.error(f"_parse_time: Exception parsing '{time_str_orig}': {e}")
+                return None
+
     def _post_query_range(self, payload):
         """
         Helper method to POST to /api/v4/query_range and handle response.
@@ -361,22 +427,32 @@ class SignozApiProcessor(Processor):
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def fetch_apm_metrics(self, service_name, start_time=None, end_time=None, window="1m", operation_names=None, metrics=None):
+    def fetch_apm_metrics(self, service_name, start_time=None, end_time=None, window="1m", operation_names=None, metrics=None, duration=None):
         """
         Fetches standard APM metrics for a given service and time range using hardcoded builder query templates.
-        metrics: list of metric keys to fetch (e.g., ["request_rate", "error_rate", "latency_avg"])
-        operation_names: list of operation names to filter (optional)
-        If start_time and end_time are not provided, defaults to last 3 hours.
+        Accepts start_time and end_time as RFC3339 or relative strings (e.g., 'now-2h', 'now-30m'), or a duration string (e.g., '2h', '90m').
+        If duration is provided, uses that as the window ending at now. If start_time and end_time are provided, uses those. Defaults to last 3 hours.
         """
-        import time
-
-        now = int(time.time() * 1000)  # current time in ms
-        if end_time is None:
-            end_time = now
-        if start_time is None:
-            start_time = end_time - 3 * 60 * 60 * 1000  # 3 hours in ms
-        from_time = int(start_time * 1000) if start_time < 1e12 else int(start_time)
-        to_time = int(end_time * 1000) if end_time < 1e12 else int(end_time)
+        # Determine time range
+        now_dt = datetime.now(timezone.utc)
+        if start_time and end_time:
+            start_dt = self._parse_time(start_time)
+            end_dt = self._parse_time(end_time)
+            if not start_dt or not end_dt:
+                # fallback to default
+                start_dt = now_dt - timedelta(hours=3)
+                end_dt = now_dt
+        elif duration:
+            dur_ms = self._parse_duration(duration)
+            if dur_ms is None:
+                dur_ms = 3 * 60 * 60 * 1000  # fallback to 3h
+            start_dt = now_dt - timedelta(milliseconds=dur_ms)
+            end_dt = now_dt
+        else:
+            start_dt = now_dt - timedelta(hours=3)
+            end_dt = now_dt
+        from_time = int(start_dt.timestamp() * 1000)
+        to_time = int(end_dt.timestamp() * 1000)
         step_val = self._parse_step(window)
         if not metrics:
             metrics = ["request_rate", "error_rate", "latency_avg"]
