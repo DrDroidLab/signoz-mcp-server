@@ -1,7 +1,6 @@
 import json
 import sys
 from time import sleep
-from signoz_mcp_server.mcp_server import app
 
 
 def run_stdio_server(handler):
@@ -20,8 +19,7 @@ def run_stdio_server(handler):
             continue
         try:
             data = json.loads(line)
-            with app.app_context():
-                response = handler(data)
+            response = handler(data)
             sys.stdout.write(json.dumps(response) + "\n")
             sys.stdout.flush()
         except Exception as e:

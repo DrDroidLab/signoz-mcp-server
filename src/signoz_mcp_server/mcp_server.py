@@ -343,7 +343,12 @@ def main():
     if (("-t" in sys.argv and "stdio" in sys.argv) or
         ("--transport" in sys.argv and "stdio" in sys.argv) or
         (transport == "stdio")):
-        run_stdio_server(handle_jsonrpc_request)
+
+        def stdio_handler(data):
+            with app.app_context():
+                return handle_jsonrpc_request(data)
+
+        run_stdio_server(stdio_handler)
     else:
         port = app.config["SERVER_CONFIG"].get("port", 8000)
         debug = app.config["SERVER_CONFIG"].get("debug", True)
