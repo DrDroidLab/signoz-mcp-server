@@ -15,8 +15,10 @@ requires-python = ">=3.9"
 license = { file = "LICENSE" }
 dependencies = [
     "Flask==3.0.0",
+    "python-dateutil>=2.9.0.post0",
     "pyyaml==6.0.1",
     "requests==2.31.0",
+    "ruff>=0.12.3",
 ]
 
 [project.scripts]
