@@ -4,9 +4,10 @@ import re
 
 import requests
 
-from processor.processor import Processor
+from signoz_mcp_server.processor.processor import Processor
 
 logger = logging.getLogger(__name__)
+
 
 class SignozDashboardQueryBuilder:
     def __init__(self, global_step, variables):
@@ -40,6 +41,7 @@ class SignozDashboardQueryBuilder:
         # Ensure timestamps are in milliseconds
         def to_ms(ts):
             return int(ts * 1000) if ts < 1e12 else int(ts)
+
         payload = {
             "start": to_ms(start_time),
             "end": to_ms(end_time),
@@ -54,6 +56,8 @@ class SignozDashboardQueryBuilder:
             },
         }
         return json.loads(json.dumps(payload, ensure_ascii=False, indent=None))
+
+
 # Hardcoded builder query templates for standard APM metrics (matching SigNoz frontend)
 APM_METRIC_QUERIES = {
     "request_rate": {
@@ -72,7 +76,7 @@ APM_METRIC_QUERIES = {
         "orderBy": [],
         "groupBy": [],
         "legend": "Request Rate",
-        "reduceTo": "avg"
+        "reduceTo": "avg",
     },
     "error_rate": {
         "dataSource": "metrics",
@@ -90,7 +94,7 @@ APM_METRIC_QUERIES = {
         "orderBy": [],
         "groupBy": [],
         "legend": "Error Rate",
-        "reduceTo": "avg"
+        "reduceTo": "avg",
     },
     # Latency metrics use a multi-query structure: sum, count, then quantile/avg
     "latency": {
@@ -110,7 +114,7 @@ APM_METRIC_QUERIES = {
             "orderBy": [],
             "groupBy": [],
             "legend": "Latency Sum",
-            "reduceTo": "avg"
+            "reduceTo": "avg",
         },
         "count": {
             "dataSource": "metrics",
@@ -128,7 +132,7 @@ APM_METRIC_QUERIES = {
             "orderBy": [],
             "groupBy": [],
             "legend": "Latency Count",
-            "reduceTo": "avg"
+            "reduceTo": "avg",
         },
         "avg": {
             "dataSource": "metrics",
@@ -146,10 +150,11 @@ APM_METRIC_QUERIES = {
             "orderBy": [],
             "groupBy": [],
             "legend": "Latency Avg",
-            "reduceTo": "avg"
-        }
-    }
+            "reduceTo": "avg",
+        },
+    },
 }
+
 
 class SignozApiProcessor(Processor):
     client = None
@@ -157,11 +162,8 @@ class SignozApiProcessor(Processor):
     def __init__(self, signoz_host, signoz_api_key=None, ssl_verify="true"):
         self.__host = signoz_host
         self.__api_key = signoz_api_key
-        self.__ssl_verify = False if ssl_verify and ssl_verify.lower() == "false" else True
-        self.headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
+        self.__ssl_verify = not (ssl_verify and ssl_verify.lower() == "false")
+        self.headers = {"Content-Type": "application/json", "Accept": "application/json"}
         if self.__api_key:
             self.headers["SIGNOZ-API-KEY"] = f"{self.__api_key}"
 
@@ -175,8 +177,7 @@ class SignozApiProcessor(Processor):
                 return True
             else:
                 status_code = response.status_code if response else None
-                raise Exception(
-                    f"Failed to connect with Signoz. Status Code: {status_code}. Response Text: {response.text}")
+                raise Exception(f"Failed to connect with Signoz. Status Code: {status_code}. Response Text: {response.text}")
         except Exception as e:
             logger.error(f"Exception occurred while fetching signoz health with error: {e}")
             raise e
@@ -199,7 +200,7 @@ class SignozApiProcessor(Processor):
         try:
             url = f"{self.__host}/api/v1/dashboards/{dashboard_id}"
             response = requests.get(url, headers=self.headers, verify=self.__ssl_verify, timeout=30)
-            
+
             if response.status_code == 200:
                 response_data = response.json()
                 return response_data.get("data", response_data)
@@ -228,10 +229,10 @@ class SignozApiProcessor(Processor):
                 elif unit == "d":
                     return value * 86400
             else:
-                # fallback: try to parse as int
                 try:
                     return int(step)
                 except Exception:
+                    logger.error(f"Failed to parse step: {step}")
                     pass
         return 60  # default
 
@@ -243,13 +244,7 @@ class SignozApiProcessor(Processor):
         print(f"Querying: {payload}")
         print(f"URL: {url}")
         try:
-            response = requests.post(
-                url,
-                headers=self.headers,
-                json=payload,
-                verify=self.__ssl_verify,
-                timeout=30
-            )
+            response = requests.post(url, headers=self.headers, json=payload, verify=self.__ssl_verify, timeout=30)
             if response.status_code == 200:
                 try:
                     resp_json = response.json()
@@ -265,7 +260,7 @@ class SignozApiProcessor(Processor):
             logger.error(f"Exception when posting to query_range: {e}")
             raise e
 
-    def query_metrics(self, start_time, end_time, query, step=None, aggregation=None):
+    def query_metrics(self, start_time, end_time, query, step=None):
         try:
             from_time = int(start_time * 1000) if start_time < 1e12 else int(start_time)
             to_time = int(end_time * 1000) if end_time < 1e12 else int(end_time)
@@ -277,18 +272,12 @@ class SignozApiProcessor(Processor):
                 "end": to_time,
                 "step": step_val,
                 "formatForWeb": False,
-                "compositeQuery": {
-                    "queryType": "promql",
-                    "promqlQuery": {
-                        "query": query
-                    }
-                }
+                "compositeQuery": {"queryType": "promql", "promqlQuery": {"query": query}},
             }
             return self._post_query_range(payload)
         except Exception as e:
             logger.error(f"Exception when querying metrics: {e}")
             raise e
-
 
     def fetch_dashboard_data(self, dashboard_name, start_time=None, end_time=None, step=None, variables_json=None):
         """
@@ -297,6 +286,7 @@ class SignozApiProcessor(Processor):
         If start_time and end_time are not provided, defaults to last 3 hours.
         """
         import time
+
         now = int(time.time() * 1000)  # current time in ms
         if end_time is None:
             end_time = now
@@ -369,7 +359,7 @@ class SignozApiProcessor(Processor):
                     panel_results[panel_title] = {"status": "error", "message": str(e)}
             return {"status": "success", "dashboard": dashboard_name, "results": panel_results}
         except Exception as e:
-            return {"status": "error", "message": str(e)} 
+            return {"status": "error", "message": str(e)}
 
     def fetch_apm_metrics(self, service_name, start_time=None, end_time=None, window="1m", operation_names=None, metrics=None):
         """
@@ -379,6 +369,7 @@ class SignozApiProcessor(Processor):
         If start_time and end_time are not provided, defaults to last 3 hours.
         """
         import time
+
         now = int(time.time() * 1000)  # current time in ms
         if end_time is None:
             end_time = now
@@ -396,63 +387,41 @@ class SignozApiProcessor(Processor):
                 # Add sum, count, and avg queries for latency
                 for subkey, template in APM_METRIC_QUERIES["latency"].items():
                     import copy
+
                     q = copy.deepcopy(template)
                     q["stepInterval"] = step_val
                     # Fill filters
                     filters = [
                         {
-                            "key": {
-                                "key": "service.name",
-                                "dataType": "string",
-                                "isColumn": False,
-                                "type": "resource"
-                            },
+                            "key": {"key": "service.name", "dataType": "string", "isColumn": False, "type": "resource"},
                             "op": "IN",
-                            "value": [service_name]
+                            "value": [service_name],
                         }
                     ]
                     if operation_names:
-                        filters.append({
-                            "key": {
-                                "key": "operation",
-                                "dataType": "string",
-                                "isColumn": False,
-                                "type": "tag"
-                            },
-                            "op": "IN",
-                            "value": operation_names
-                        })
+                        filters.append(
+                            {
+                                "key": {"key": "operation", "dataType": "string", "isColumn": False, "type": "tag"},
+                                "op": "IN",
+                                "value": operation_names,
+                            }
+                        )
                     if subkey in ("sum", "count"):
                         q["filters"] = {"items": filters, "op": "AND"}
                     q["queryName"] = q.get("expression")  # Use C, D, or C/D
                     builder_queries[q["queryName"]] = q
             elif metric_key in APM_METRIC_QUERIES:
                 import copy
+
                 q = copy.deepcopy(APM_METRIC_QUERIES[metric_key])
                 q["stepInterval"] = step_val
                 filters = [
-                    {
-                        "key": {
-                            "key": "service.name",
-                            "dataType": "string",
-                            "isColumn": False,
-                            "type": "resource"
-                        },
-                        "op": "IN",
-                        "value": [service_name]
-                    }
+                    {"key": {"key": "service.name", "dataType": "string", "isColumn": False, "type": "resource"}, "op": "IN", "value": [service_name]}
                 ]
                 if operation_names:
-                    filters.append({
-                        "key": {
-                            "key": "operation",
-                            "dataType": "string",
-                            "isColumn": False,
-                            "type": "tag"
-                        },
-                        "op": "IN",
-                        "value": operation_names
-                    })
+                    filters.append(
+                        {"key": {"key": "operation", "dataType": "string", "isColumn": False, "type": "tag"}, "op": "IN", "value": operation_names}
+                    )
                 q["filters"] = {"items": filters, "op": "AND"}
                 q["queryName"] = chr(query_name_counter)
                 query_name_counter += 1
@@ -462,12 +431,6 @@ class SignozApiProcessor(Processor):
             "end": to_time,
             "step": step_val,
             "variables": {},
-            "compositeQuery": {
-                "queryType": "builder",
-                "panelType": "graph",
-                "builderQueries": builder_queries
-            }
+            "compositeQuery": {"queryType": "builder", "panelType": "graph", "builderQueries": builder_queries},
         }
         return self._post_query_range(payload)
-        
-

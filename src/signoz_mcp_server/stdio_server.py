@@ -20,9 +20,5 @@ def run_stdio_server(handler):
             sys.stdout.write(json.dumps(response) + "\n")
             sys.stdout.flush()
         except Exception as e:
-            sys.stdout.write(json.dumps({
-                "jsonrpc": "2.0",
-                "error": {"code": -32000, "message": str(e)},
-                "id": None
-            }) + "\n")
-            sys.stdout.flush() 
+            sys.stdout.write(json.dumps({"jsonrpc": "2.0", "error": {"code": -32000, "message": str(e)}, "id": None}) + "\n")
+            sys.stdout.flush()
