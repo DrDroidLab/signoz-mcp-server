@@ -123,8 +123,8 @@ TOOLS_LIST = [
             "type": "object",
             "properties": {
                 "service_name": {"type": "string", "description": "The name of the service to fetch APM metrics for"},
-                "start_time": {"type": "number", "description": "Start time in Unix timestamp (seconds or milliseconds)"},
-                "end_time": {"type": "number", "description": "End time in Unix timestamp (seconds or milliseconds)"},
+                "start_time": {"type": "string", "description": "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"},
+                "end_time": {"type": "string", "description": "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"},
                 "window": {"type": "string", "description": "Query window (e.g., '1m', '5m'). Default: '1m'", "default": "1m"},
             },
             "required": ["service_name"],
@@ -223,24 +223,16 @@ def fetch_signoz_dashboard_data(dashboard_name, start_time=None, end_time=None, 
         return {"status": "error", "message": f"Failed to fetch dashboard data: {e!s}"}
 
 
-def fetch_signoz_apm_metrics(service_name, start_time=None, end_time=None, window="1m"):
-    """Fetch standard APM metrics for a given service and time range. If start_time and end_time are not provided, defaults to last 3 hours."""
-    import time
-
+def fetch_signoz_apm_metrics(service_name, start_time=None, end_time=None, window="1m", duration=None):
+    """Fetch standard APM metrics for a given service and time range. Accepts start_time and end_time as RFC3339 or relative strings (e.g., 'now-2h'), or a duration string (e.g., '2h', '90m'). Defaults to last 3 hours if not provided."""
     try:
-        # Default to last 3 hours if not provided
-        now = int(time.time() * 1000)  # current time in ms
-        if end_time is None:
-            end_time = now
-        if start_time is None:
-            start_time = end_time - 3 * 60 * 60 * 1000  # 3 hours in ms
         signoz_processor = current_app.config["signoz_processor"]
-        result = signoz_processor.fetch_apm_metrics(service_name, start_time, end_time, window)
+        result = signoz_processor.fetch_apm_metrics(service_name, start_time, end_time, window, duration=duration)
         return {
             "status": "success",
             "message": f"Fetched APM metrics for service: {service_name}",
             "data": result,
-            "query_params": {"service_name": service_name, "start_time": start_time, "end_time": end_time, "window": window},
+            "query_params": {"service_name": service_name, "start_time": start_time, "end_time": end_time, "window": window, "duration": duration},
         }
     except Exception as e:
         return {"status": "error", "message": f"Failed to fetch APM metrics: {e!s}"}
