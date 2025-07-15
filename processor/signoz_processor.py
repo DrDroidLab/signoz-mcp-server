@@ -364,12 +364,19 @@ class SignozApiProcessor(Processor):
         except Exception as e:
             return {"status": "error", "message": str(e)} 
 
-    def fetch_apm_metrics(self, service_name, start_time, end_time, window="1m", operation_names=None, metrics=None):
+    def fetch_apm_metrics(self, service_name, start_time=None, end_time=None, window="1m", operation_names=None, metrics=None):
         """
         Fetches standard APM metrics for a given service and time range using hardcoded builder query templates.
         metrics: list of metric keys to fetch (e.g., ["request_rate", "error_rate", "latency_avg"])
         operation_names: list of operation names to filter (optional)
+        If start_time and end_time are not provided, defaults to last 3 hours.
         """
+        import time
+        now = int(time.time() * 1000)  # current time in ms
+        if end_time is None:
+            end_time = now
+        if start_time is None:
+            start_time = end_time - 3 * 60 * 60 * 1000  # 3 hours in ms
         from_time = int(start_time * 1000) if start_time < 1e12 else int(start_time)
         to_time = int(end_time * 1000) if end_time < 1e12 else int(end_time)
         step_val = self._parse_step(window)
@@ -456,15 +463,3 @@ class SignozApiProcessor(Processor):
         }
         return self._post_query_range(payload)
         
-
-# if __name__ == "__main__":
-#     signoz_processor = SignozApiProcessor(
-#         signoz_host="https://microservices-signoz.demo.drdroid.io",
-#         signoz_api_key="hrCw98ObIexp5Irl36H7D+qRlnaWuoPPXknozXyBtJI="
-#     )
-#     result = signoz_processor.fetch_apm_metrics(
-#         service_name="emailservice",
-#         start_time=1752505980000,
-#         end_time=1752507660000,
-#         window="5m"
-#     )
