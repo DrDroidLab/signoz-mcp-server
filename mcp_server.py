@@ -165,6 +165,32 @@ TOOLS_LIST = [
             "required": ["dashboard_name", "start_time", "end_time"]
         }
     },
+        "name": "fetch_apm_metrics",
+        "description": "Fetch standard APM metrics (request rate, error rate, latency, apdex, etc.) for a given service and time range.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "service_name": {
+                    "type": "string",
+                    "description": "The name of the service to fetch APM metrics for"
+                },
+                "start_time": {
+                    "type": "number",
+                    "description": "Start time in Unix timestamp (seconds or milliseconds)"
+                },
+                "end_time": {
+                    "type": "number",
+                    "description": "End time in Unix timestamp (seconds or milliseconds)"
+                },
+                "window": {
+                    "type": "string",
+                    "description": "Query window (e.g., '1m', '5m'). Default: '1m'",
+                    "default": "1m"
+                }
+            },
+            "required": ["service_name", "start_time", "end_time"]
+        }
+    }
 ]
 
 def test_signoz_connection():
@@ -296,6 +322,28 @@ def fetch_signoz_dashboard_data(dashboard_name, start_time, end_time, step=None,
             "message": f"Failed to fetch dashboard data: {str(e)}"
         }
 
+def fetch_signoz_apm_metrics(service_name, start_time, end_time, window="1m"):
+    """Fetch standard APM metrics for a given service and time range."""
+    try:
+        signoz_processor = current_app.config['signoz_processor']
+        result = signoz_processor.fetch_apm_metrics(service_name, start_time, end_time, window)
+        return {
+            "status": "success",
+            "message": f"Fetched APM metrics for service: {service_name}",
+            "data": result,
+            "query_params": {
+                "service_name": service_name,
+                "start_time": start_time,
+                "end_time": end_time,
+                "window": window
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to fetch APM metrics: {str(e)}"
+        }
+
 # Function mapping
 FUNCTION_MAPPING = {
     "test_connection": test_signoz_connection,
@@ -303,6 +351,7 @@ FUNCTION_MAPPING = {
     "fetch_dashboard_details": fetch_signoz_dashboard_details,
     "query_metrics": query_signoz_metrics,
     "fetch_dashboard_data": fetch_signoz_dashboard_data,
+    "fetch_apm_metrics": fetch_signoz_apm_metrics
 }
 
 def handle_jsonrpc_request(data):
