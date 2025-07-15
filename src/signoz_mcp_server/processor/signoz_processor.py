@@ -345,19 +345,33 @@ class SignozApiProcessor(Processor):
             logger.error(f"Exception when querying metrics: {e}")
             raise e
 
-    def fetch_dashboard_data(self, dashboard_name, start_time=None, end_time=None, step=None, variables_json=None):
+    def fetch_dashboard_data(self, dashboard_name, start_time=None, end_time=None, step=None, variables_json=None, duration=None):
         """
         Fetches dashboard data for all panels in a specified Signoz dashboard by name.
+        Accepts start_time and end_time as RFC3339 or relative strings (e.g., 'now-2h', 'now-30m'), or a duration string (e.g., '2h', '90m').
+        If duration is provided, uses that as the window ending at now. If start_time and end_time are provided, uses those. Defaults to last 3 hours.
         Returns a dict with panel results.
-        If start_time and end_time are not provided, defaults to last 3 hours.
         """
-        import time
-
-        now = int(time.time() * 1000)  # current time in ms
-        if end_time is None:
-            end_time = now
-        if start_time is None:
-            start_time = end_time - 3 * 60 * 60 * 1000  # 3 hours in ms
+        # Determine time range
+        now_dt = datetime.now(timezone.utc)
+        if start_time and end_time:
+            start_dt = self._parse_time(start_time)
+            end_dt = self._parse_time(end_time)
+            if not start_dt or not end_dt:
+                # fallback to default
+                start_dt = now_dt - timedelta(hours=3)
+                end_dt = now_dt
+        elif duration:
+            dur_ms = self._parse_duration(duration)
+            if dur_ms is None:
+                dur_ms = 3 * 60 * 60 * 1000  # fallback to 3h
+            start_dt = now_dt - timedelta(milliseconds=dur_ms)
+            end_dt = now_dt
+        else:
+            start_dt = now_dt - timedelta(hours=3)
+            end_dt = now_dt
+        from_time = int(start_dt.timestamp() * 1000)
+        to_time = int(end_dt.timestamp() * 1000)
         try:
             dashboards = self.fetch_dashboards()
             if not dashboards or "data" not in dashboards:
@@ -417,7 +431,7 @@ class SignozApiProcessor(Processor):
                 if not built_queries:
                     panel_results[panel_title] = {"status": "skipped", "message": "No valid builder queries in panel"}
                     continue
-                payload = query_builder.build_panel_payload(panel_type, built_queries, start_time, end_time)
+                payload = query_builder.build_panel_payload(panel_type, built_queries, from_time, to_time)
                 try:
                     result = self._post_query_range(payload)
                     panel_results[panel_title] = {"status": "success", "data": result}

@@ -1,7 +1,9 @@
+import datetime
 import json
 import logging
 import os
 import sys
+from time import timezone
 
 import yaml
 from flask import Flask, current_app, jsonify, make_response, request
@@ -65,6 +67,11 @@ SERVER_CAPABILITIES = {"tools": {}}
 # Protocol version
 PROTOCOL_VERSION = "2025-06-18"
 
+def get_current_time_iso():
+    date_time =  datetime.datetime.now(datetime.timezone.utc).isoformat()
+    print("date_time:::::", date_time)
+    return date_time
+
 # Available tools
 TOOLS_LIST = [
     {
@@ -103,22 +110,23 @@ TOOLS_LIST = [
     },
     {
         "name": "fetch_dashboard_data",
-        "description": "Fetch all panel data for a given Signoz dashboard by name and time range.",
+        "description": f"Fetch all panel data for a given Signoz dashboard by name and time range. Current datetime is {get_current_time_iso()}",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "dashboard_name": {"type": "string", "description": "The name of the dashboard to fetch data for"},
-                "start_time": {"type": "number", "description": "Start time for the query in Unix timestamp (milliseconds)"},
-                "end_time": {"type": "number", "description": "End time for the query in Unix timestamp (milliseconds)"},
+                "start_time": {"type": "string", "description": "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"},
+                "end_time": {"type": "string", "description": "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"},
                 "step": {"type": "number", "description": "Step interval for the query (seconds, optional)"},
                 "variables_json": {"type": "string", "description": "Optional variable overrides as a JSON object"},
+                "duration": {"type": "string", "description": "Duration string for the time window (e.g., '2h', '90m')"},
             },
             "required": ["dashboard_name"],
         },
     },
     {
         "name": "fetch_apm_metrics",
-        "description": "Fetch standard APM metrics (request rate, error rate, latency, apdex, etc.) for a given service and time range.",
+        "description": f"Fetch standard APM metrics (request rate, error rate, latency, apdex, etc.) for a given service and time range. Current datetime is {get_current_time_iso()}",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -126,6 +134,7 @@ TOOLS_LIST = [
                 "start_time": {"type": "string", "description": "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"},
                 "end_time": {"type": "string", "description": "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"},
                 "window": {"type": "string", "description": "Query window (e.g., '1m', '5m'). Default: '1m'", "default": "1m"},
+                "duration": {"type": "string", "description": "Duration string for the time window (e.g., '2h', '90m')"},
             },
             "required": ["service_name"],
         },
@@ -199,21 +208,19 @@ def query_signoz_metrics(start_time, end_time, query, step=None, aggregation=Non
         return {"status": "error", "message": f"Failed to query metrics: {e!s}"}
 
 
-def fetch_signoz_dashboard_data(dashboard_name, start_time=None, end_time=None, step=None, variables_json=None):
+def fetch_signoz_dashboard_data(dashboard_name, start_time=None, end_time=None, step=None, variables_json=None, duration=None):
     """Fetch all panel data for a given Signoz dashboard by name and time range.
+       Accepts start_time and end_time as RFC3339 or relative strings, or a duration string.
        If start_time and end_time are not provided, defaults to last 3 hours."""
-    import time
-
     try:
-        # Default to last 3 hours if not provided
-        now = int(time.time() * 1000)  # current time in ms
-        if end_time is None:
-            end_time = now
-        if start_time is None:
-            start_time = end_time - 3 * 60 * 60 * 1000  # 3 hours in ms
         signoz_processor = current_app.config["signoz_processor"]
         result = signoz_processor.fetch_dashboard_data(
-            dashboard_name=dashboard_name, start_time=start_time, end_time=end_time, step=step, variables_json=variables_json
+            dashboard_name=dashboard_name,
+            start_time=start_time,
+            end_time=end_time,
+            step=step,
+            variables_json=variables_json,
+            duration=duration
         )
         if result.get("status") == "success":
             return {"status": "success", "message": f"Successfully fetched dashboard data for: {dashboard_name}", "data": result}
