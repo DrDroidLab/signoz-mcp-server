@@ -1,10 +1,12 @@
-from flask import Flask, request, jsonify, make_response, current_app
+import json
 import logging
 import os
-import json
-import yaml
-from processor.signoz_processor import SignozApiProcessor
 import sys
+
+import yaml
+from flask import Flask, current_app, jsonify, make_response, request
+
+from processor.signoz_processor import SignozApiProcessor
 from stdio_server import run_stdio_server
 
 app = Flask(__name__)
@@ -12,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 # Load configuration from environment variables, then YAML as fallback
 def load_config():
-    config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
+    config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
     config = {}
     # Try to load YAML config as fallback
     try:
-        with open(config_path, 'r') as file:
+        with open(config_path) as file:
             config = yaml.safe_load(file)
     except FileNotFoundError:
         config = {}
@@ -24,37 +26,37 @@ def load_config():
         raise Exception(f"Error parsing YAML configuration: {e}")
 
     # Environment variable overrides
-    signoz_host = os.environ.get('SIGNOZ_HOST') or (config.get('signoz', {}).get('host') if config.get('signoz') else None)
-    signoz_api_key = os.environ.get('SIGNOZ_API_KEY') or (config.get('signoz', {}).get('api_key') if config.get('signoz') else None)
-    signoz_ssl_verify = os.environ.get('SIGNOZ_SSL_VERIFY') or (config.get('signoz', {}).get('ssl_verify', 'true') if config.get('signoz') else 'true')
-    server_port = int(os.environ.get('MCP_SERVER_PORT') or (config.get('server', {}).get('port', 8000) if config.get('server') else 8000))
-    server_debug = os.environ.get('MCP_SERVER_DEBUG')
+    signoz_host = os.environ.get("SIGNOZ_HOST") or (config.get("signoz", {}).get("host") if config.get("signoz") else None)
+    signoz_api_key = os.environ.get("SIGNOZ_API_KEY") or (config.get("signoz", {}).get("api_key") if config.get("signoz") else None)
+    signoz_ssl_verify = os.environ.get("SIGNOZ_SSL_VERIFY") or (config.get("signoz", {}).get("ssl_verify", "true") if config.get("signoz") else "true")
+    server_port = int(os.environ.get("MCP_SERVER_PORT") or (config.get("server", {}).get("port", 8000) if config.get("server") else 8000))
+    server_debug = os.environ.get("MCP_SERVER_DEBUG")
     if server_debug is not None:
-        server_debug = server_debug.lower() in ['1', 'true', 'yes']
+        server_debug = server_debug.lower() in ["1", "true", "yes"]
     else:
-        server_debug = config.get('server', {}).get('debug', True) if config.get('server') else True
+        server_debug = config.get("server", {}).get("debug", True) if config.get("server") else True
 
     return {
-        'signoz': {
-            'host': signoz_host,
-            'api_key': signoz_api_key,
-            'ssl_verify': signoz_ssl_verify
+        "signoz": {
+            "host": signoz_host,
+            "api_key": signoz_api_key,
+            "ssl_verify": signoz_ssl_verify
         },
-        'server': {
-            'port': server_port,
-            'debug': server_debug
+        "server": {
+            "port": server_port,
+            "debug": server_debug
         }
     }
 
 # Initialize configuration and processor at app startup
 with app.app_context():
     config = load_config()
-    app.config['SIGNOZ_CONFIG'] = config.get('signoz', {})
-    app.config['SERVER_CONFIG'] = config.get('server', {})
-    app.config['signoz_processor'] = SignozApiProcessor(
-        signoz_host=app.config['SIGNOZ_CONFIG'].get('host'),
-        signoz_api_key=app.config['SIGNOZ_CONFIG'].get('api_key'),
-        ssl_verify=app.config['SIGNOZ_CONFIG'].get('ssl_verify', 'true')
+    app.config["SIGNOZ_CONFIG"] = config.get("signoz", {})
+    app.config["SERVER_CONFIG"] = config.get("server", {})
+    app.config["signoz_processor"] = SignozApiProcessor(
+        signoz_host=app.config["SIGNOZ_CONFIG"].get("host"),
+        signoz_api_key=app.config["SIGNOZ_CONFIG"].get("api_key"),
+        ssl_verify=app.config["SIGNOZ_CONFIG"].get("ssl_verify", "true")
     )
 
 # Server info
@@ -197,15 +199,15 @@ TOOLS_LIST = [
 def test_signoz_connection():
     """Test connection to Signoz API"""
     try:
-        processor = current_app.config['signoz_processor']
-        signoz_config = current_app.config['SIGNOZ_CONFIG']
+        processor = current_app.config["signoz_processor"]
+        signoz_config = current_app.config["SIGNOZ_CONFIG"]
         result = processor.test_connection()
         if result:
             return {
                 "status": "success",
                 "message": "Successfully connected to Signoz API",
-                "host": signoz_config.get('host'),
-                "ssl_verify": signoz_config.get('ssl_verify', 'true')
+                "host": signoz_config.get("host"),
+                "ssl_verify": signoz_config.get("ssl_verify", "true")
             }
         else:
             return {
@@ -215,14 +217,14 @@ def test_signoz_connection():
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Connection test failed: {str(e)}"
+            "message": f"Connection test failed: {e!s}"
         }
 
 # Fetch dashboards function
 def fetch_signoz_dashboards():
     """Fetch all available dashboards from Signoz"""
     try:
-        signoz_processor= current_app.config['signoz_processor']
+        signoz_processor= current_app.config["signoz_processor"]
         result = signoz_processor.fetch_dashboards()
         if result:
             return {
@@ -238,14 +240,14 @@ def fetch_signoz_dashboards():
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Failed to fetch dashboards: {str(e)}"
+            "message": f"Failed to fetch dashboards: {e!s}"
         }
 
 # Fetch dashboard details function
 def fetch_signoz_dashboard_details(dashboard_id):
     """Fetch detailed information about a specific dashboard"""
     try:
-        signoz_processor= current_app.config['signoz_processor']
+        signoz_processor= current_app.config["signoz_processor"]
         result = signoz_processor.fetch_dashboard_details(dashboard_id)
         if result:
             return {
@@ -261,14 +263,14 @@ def fetch_signoz_dashboard_details(dashboard_id):
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Failed to fetch dashboard details: {str(e)}"
+            "message": f"Failed to fetch dashboard details: {e!s}"
         }
 
 # Query metrics function
 def query_signoz_metrics(start_time, end_time, query, step=None, aggregation=None):
     """Query metrics from Signoz with specified parameters"""
     try:
-        signoz_processor= current_app.config['signoz_processor']
+        signoz_processor= current_app.config["signoz_processor"]
         result = signoz_processor.query_metrics(start_time, end_time, query, step, aggregation)
         if result:
             return {
@@ -291,13 +293,13 @@ def query_signoz_metrics(start_time, end_time, query, step=None, aggregation=Non
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Failed to query metrics: {str(e)}"
+            "message": f"Failed to query metrics: {e!s}"
         }
 
 def fetch_signoz_dashboard_data(dashboard_name, start_time, end_time, step=None, variables_json=None):
     """Fetch all panel data for a given Signoz dashboard by name and time range."""
     try:
-        signoz_processor = current_app.config['signoz_processor']
+        signoz_processor = current_app.config["signoz_processor"]
         result = signoz_processor.fetch_dashboard_data(
             dashboard_name=dashboard_name,
             start_time=start_time,
@@ -320,13 +322,13 @@ def fetch_signoz_dashboard_data(dashboard_name, start_time, end_time, step=None,
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Failed to fetch dashboard data: {str(e)}"
+            "message": f"Failed to fetch dashboard data: {e!s}"
         }
 
 def fetch_signoz_apm_metrics(service_name, start_time, end_time, window="1m"):
     """Fetch standard APM metrics for a given service and time range."""
     try:
-        signoz_processor = current_app.config['signoz_processor']
+        signoz_processor = current_app.config["signoz_processor"]
         result = signoz_processor.fetch_apm_metrics(service_name, start_time, end_time, window)
         return {
             "status": "success",
@@ -342,7 +344,7 @@ def fetch_signoz_apm_metrics(service_name, start_time, end_time, window="1m"):
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Failed to fetch APM metrics: {str(e)}"
+            "message": f"Failed to fetch APM metrics: {e!s}"
         }
 
 # Function mapping
@@ -361,7 +363,7 @@ def handle_jsonrpc_request(data):
     params = data.get("params", {})
 
     # Handle JSON-RPC notifications (no id field or method starts with 'notifications/')
-    if method and method.startswith('notifications/'):
+    if method and method.startswith("notifications/"):
         logger.info(f"Received notification: {method}")
         return {"jsonrpc": "2.0", "result": {}, "id": request_id}
 
@@ -437,7 +439,7 @@ def handle_jsonrpc_request(data):
                 "jsonrpc": "2.0",
                 "error": {
                     "code": -32000,
-                    "message": f"Error executing tool: {str(e)}"
+                    "message": f"Error executing tool: {e!s}"
                 },
                 "id": request_id
             }
@@ -452,9 +454,9 @@ def handle_jsonrpc_request(data):
         "id": request_id
     }
 
-@app.route('/mcp', methods=['POST', 'GET'])
+@app.route("/mcp", methods=["POST", "GET"])
 def mcp_endpoint():
-    if request.method == 'GET':
+    if request.method == "GET":
         # Return a friendly message or 405 for GET requests
         return make_response(jsonify({
             "message": "This endpoint expects JSON-RPC POST requests. Use POST with application/json."
@@ -484,14 +486,14 @@ def mcp_endpoint():
             status_code = 500
     return jsonify(response), status_code
 
-@app.route('/health', methods=['GET'])
+@app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "ok"})
 
-if __name__ == '__main__':
-    if '-t' in sys.argv and 'stdio' in sys.argv:
+if __name__ == "__main__":
+    if "-t" in sys.argv and "stdio" in sys.argv:
         run_stdio_server(handle_jsonrpc_request)
     else:
-        port = app.config['SERVER_CONFIG'].get('port', 8000)
-        debug = app.config['SERVER_CONFIG'].get('debug', True)
-        app.run(host='0.0.0.0', port=port, debug=debug) 
+        port = app.config["SERVER_CONFIG"].get("port", 8000)
+        debug = app.config["SERVER_CONFIG"].get("debug", True)
+        app.run(host="0.0.0.0", port=port, debug=debug) 

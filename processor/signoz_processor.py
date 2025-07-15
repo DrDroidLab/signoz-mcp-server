@@ -1,10 +1,10 @@
-import logging
-import requests
 import json
+import logging
 import re
 
-from processor.processor import Processor
+import requests
 
+from processor.processor import Processor
 
 logger = logging.getLogger(__name__)
 
@@ -154,20 +154,20 @@ APM_METRIC_QUERIES = {
 class SignozApiProcessor(Processor):
     client = None
 
-    def __init__(self, signoz_host, signoz_api_key=None, ssl_verify='true'):
+    def __init__(self, signoz_host, signoz_api_key=None, ssl_verify="true"):
         self.__host = signoz_host
         self.__api_key = signoz_api_key
-        self.__ssl_verify = False if ssl_verify and ssl_verify.lower() == 'false' else True
+        self.__ssl_verify = False if ssl_verify and ssl_verify.lower() == "false" else True
         self.headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
         if self.__api_key:
-            self.headers['SIGNOZ-API-KEY'] = f'{self.__api_key}'
+            self.headers["SIGNOZ-API-KEY"] = f"{self.__api_key}"
 
     def test_connection(self):
         try:
-            url = f'{self.__host}/api/v1/health'
+            url = f"{self.__host}/api/v1/health"
             response = requests.get(url, headers=self.headers, verify=self.__ssl_verify, timeout=20)
             print(f"Response: {response.text}")
             logger.info(f"Response: {response.text}")
@@ -183,7 +183,7 @@ class SignozApiProcessor(Processor):
 
     def fetch_dashboards(self):
         try:
-            url = f'{self.__host}/api/v1/dashboards'
+            url = f"{self.__host}/api/v1/dashboards"
             response = requests.get(url, headers=self.headers, verify=self.__ssl_verify, timeout=60)
             print(response)
             if response.status_code == 200:
@@ -197,7 +197,7 @@ class SignozApiProcessor(Processor):
 
     def fetch_dashboard_details(self, dashboard_id):
         try:
-            url = f'{self.__host}/api/v1/dashboards/{dashboard_id}'
+            url = f"{self.__host}/api/v1/dashboards/{dashboard_id}"
             response = requests.get(url, headers=self.headers, verify=self.__ssl_verify, timeout=30)
             
             if response.status_code == 200:
@@ -239,7 +239,7 @@ class SignozApiProcessor(Processor):
         """
         Helper method to POST to /api/v4/query_range and handle response.
         """
-        url = f'{self.__host}/api/v4/query_range'
+        url = f"{self.__host}/api/v4/query_range"
         print(f"Querying: {payload}")
         print(f"URL: {url}")
         try:
@@ -253,7 +253,7 @@ class SignozApiProcessor(Processor):
             if response.status_code == 200:
                 try:
                     resp_json = response.json()
-                    print('response json:::', resp_json)
+                    print("response json:::", resp_json)
                     return resp_json
                 except Exception as e:
                     logger.error(f"Failed to parse JSON: {e}, response text: {response.text}")
