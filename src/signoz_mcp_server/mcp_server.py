@@ -270,7 +270,8 @@ def handle_jsonrpc_request(data):
     # Handle initialization (stateless: just validate and return capabilities)
     if method == "initialize":
         client_protocol_version = params.get("protocolVersion")
-        if client_protocol_version != PROTOCOL_VERSION:
+        # Accept any protocol version that starts with '2025-'
+        if not (isinstance(client_protocol_version, str) and client_protocol_version.startswith("2025-")):
             return {
                 "jsonrpc": "2.0",
                 "error": {"code": -32602, "message": f"Unsupported protocol version: {client_protocol_version}. Server supports: {PROTOCOL_VERSION}"},
