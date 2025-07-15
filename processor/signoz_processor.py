@@ -1,12 +1,59 @@
+import json
 import logging
-import requests
 import re
+
+import requests
 
 from processor.processor import Processor
 
-
 logger = logging.getLogger(__name__)
 
+class SignozDashboardQueryBuilder:
+    def __init__(self, global_step, variables):
+        self.global_step = global_step
+        self.variables = variables
+        self.query_letter_ord = ord("A")
+
+    def _get_next_query_letter(self):
+        letter = chr(self.query_letter_ord)
+        self.query_letter_ord += 1
+        if self.query_letter_ord > ord("Z"):
+            self.query_letter_ord = ord("A")
+        return letter
+
+    def build_query_dict(self, query_data):
+        query_dict = dict(query_data)
+        current_letter = self._get_next_query_letter()
+        query_dict.pop("step_interval", None)
+        query_dict["stepInterval"] = self.global_step
+        if "group_by" in query_dict:
+            query_dict["groupBy"] = query_dict.pop("group_by")
+        query_dict["queryName"] = current_letter
+        query_dict["expression"] = current_letter
+        query_dict["disabled"] = query_dict.get("disabled", False)
+        # Add pageSize for metrics queries
+        if query_dict.get("dataSource") == "metrics":
+            query_dict["pageSize"] = 10
+        return current_letter, query_dict
+
+    def build_panel_payload(self, panel_type, panel_queries, start_time, end_time):
+        # Ensure timestamps are in milliseconds
+        def to_ms(ts):
+            return int(ts * 1000) if ts < 1e12 else int(ts)
+        payload = {
+            "start": to_ms(start_time),
+            "end": to_ms(end_time),
+            "step": self.global_step,
+            "variables": self.variables,
+            "formatForWeb": False,
+            "compositeQuery": {
+                "queryType": "builder",
+                "panelType": panel_type,
+                "fillGaps": False,
+                "builderQueries": panel_queries,
+            },
+        }
+        return json.loads(json.dumps(payload, ensure_ascii=False, indent=None))
 # Hardcoded builder query templates for standard APM metrics (matching SigNoz frontend)
 APM_METRIC_QUERIES = {
     "request_rate": {
@@ -107,20 +154,20 @@ APM_METRIC_QUERIES = {
 class SignozApiProcessor(Processor):
     client = None
 
-    def __init__(self, signoz_host, signoz_api_key=None, ssl_verify='true'):
+    def __init__(self, signoz_host, signoz_api_key=None, ssl_verify="true"):
         self.__host = signoz_host
         self.__api_key = signoz_api_key
-        self.__ssl_verify = False if ssl_verify and ssl_verify.lower() == 'false' else True
+        self.__ssl_verify = False if ssl_verify and ssl_verify.lower() == "false" else True
         self.headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
         if self.__api_key:
-            self.headers['SIGNOZ-API-KEY'] = f'{self.__api_key}'
+            self.headers["SIGNOZ-API-KEY"] = f"{self.__api_key}"
 
     def test_connection(self):
         try:
-            url = f'{self.__host}/api/v1/health'
+            url = f"{self.__host}/api/v1/health"
             response = requests.get(url, headers=self.headers, verify=self.__ssl_verify, timeout=20)
             print(f"Response: {response.text}")
             logger.info(f"Response: {response.text}")
@@ -136,7 +183,7 @@ class SignozApiProcessor(Processor):
 
     def fetch_dashboards(self):
         try:
-            url = f'{self.__host}/api/v1/dashboards'
+            url = f"{self.__host}/api/v1/dashboards"
             response = requests.get(url, headers=self.headers, verify=self.__ssl_verify, timeout=60)
             print(response)
             if response.status_code == 200:
@@ -150,7 +197,7 @@ class SignozApiProcessor(Processor):
 
     def fetch_dashboard_details(self, dashboard_id):
         try:
-            url = f'{self.__host}/api/v1/dashboards/{dashboard_id}'
+            url = f"{self.__host}/api/v1/dashboards/{dashboard_id}"
             response = requests.get(url, headers=self.headers, verify=self.__ssl_verify, timeout=30)
             
             if response.status_code == 200:
@@ -192,7 +239,7 @@ class SignozApiProcessor(Processor):
         """
         Helper method to POST to /api/v4/query_range and handle response.
         """
-        url = f'{self.__host}/api/v4/query_range'
+        url = f"{self.__host}/api/v4/query_range"
         print(f"Querying: {payload}")
         print(f"URL: {url}")
         try:
@@ -206,7 +253,7 @@ class SignozApiProcessor(Processor):
             if response.status_code == 200:
                 try:
                     resp_json = response.json()
-                    print('response json:::', resp_json)
+                    print("response json:::", resp_json)
                     return resp_json
                 except Exception as e:
                     logger.error(f"Failed to parse JSON: {e}, response text: {response.text}")
@@ -241,6 +288,81 @@ class SignozApiProcessor(Processor):
         except Exception as e:
             logger.error(f"Exception when querying metrics: {e}")
             raise e
+
+
+    def fetch_dashboard_data(self, dashboard_name, start_time, end_time, step=None, variables_json=None):
+        """
+        Fetches dashboard data for all panels in a specified Signoz dashboard by name.
+        Returns a dict with panel results.
+        """
+        try:
+            dashboards = self.fetch_dashboards()
+            if not dashboards or "data" not in dashboards:
+                return {"status": "error", "message": "No dashboards found"}
+            dashboard_id = None
+            for d in dashboards["data"]:
+                dashboard_data = d.get("data", {})
+                if dashboard_data.get("title") == dashboard_name:
+                    dashboard_id = d.get("id")
+                    break
+            if not dashboard_id:
+                return {"status": "error", "message": f"Dashboard '{dashboard_name}' not found"}
+            dashboard_details = self.fetch_dashboard_details(dashboard_id)
+            if not dashboard_details:
+                return {"status": "error", "message": f"Dashboard details not found for '{dashboard_name}'"}
+            # Panels are nested under 'data' in the dashboard details
+            panels = dashboard_details.get("data", {}).get("widgets", [])
+            print(f"dashboard_details: {dashboard_details.get('data', {})}")
+            print(f"panels: {panels}")
+            if not panels:
+                return {"status": "error", "message": f"No panels found in dashboard '{dashboard_name}'"}
+            # Parse variables
+            variables = {}
+            if variables_json:
+                try:
+                    variables = json.loads(variables_json)
+                    if not isinstance(variables, dict):
+                        variables = {}
+                except Exception:
+                    variables = {}
+            # Step
+            global_step = step if step is not None else 60
+            query_builder = SignozDashboardQueryBuilder(global_step, variables)
+            panel_results = {}
+            print(f"panels: {panels}")
+            for panel in panels:
+                panel_title = panel.get("title") or f"Panel_{panel.get('id', '')}"
+                panel_type = panel.get("panelTypes") or panel.get("panelType") or panel.get("type") or "graph"
+                queries = []
+                # Only process builder queries
+                if (
+                    isinstance(panel.get("query"), dict)
+                    and panel["query"].get("queryType") == "builder"
+                    and isinstance(panel["query"].get("builder"), dict)
+                    and isinstance(panel["query"]["builder"].get("queryData"), list)
+                ):
+                    queries = panel["query"]["builder"]["queryData"]
+                if not queries:
+                    panel_results[panel_title] = {"status": "skipped", "message": "No builder queries in panel"}
+                    continue
+                built_queries = {}
+                for query_data in queries:
+                    if not isinstance(query_data, dict):
+                        continue
+                    letter, query_dict = query_builder.build_query_dict(query_data)
+                    built_queries[letter] = query_dict
+                if not built_queries:
+                    panel_results[panel_title] = {"status": "skipped", "message": "No valid builder queries in panel"}
+                    continue
+                payload = query_builder.build_panel_payload(panel_type, built_queries, start_time, end_time)
+                try:
+                    result = self._post_query_range(payload)
+                    panel_results[panel_title] = {"status": "success", "data": result}
+                except Exception as e:
+                    panel_results[panel_title] = {"status": "error", "message": str(e)}
+            return {"status": "success", "dashboard": dashboard_name, "results": panel_results}
+        except Exception as e:
+            return {"status": "error", "message": str(e)} 
 
     def fetch_apm_metrics(self, service_name, start_time, end_time, window="1m", operation_names=None, metrics=None):
         """

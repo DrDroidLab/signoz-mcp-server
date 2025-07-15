@@ -1,0 +1,63 @@
+# Target Python version
+target-version = "py39"
+
+# Line length configuration
+line-length = 150
+indent-width = 4
+
+# Enable Pyflakes (`F`), isort (`I`), and a subset of the pycodestyle (`E`) codes by default
+# Exclude a variety of commonly ignored directories
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    "*.pyi",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "__pycache__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "migrations",
+    "*env/",
+    "protos/*",
+]
+
+# Allow unused variables when underscore-prefixed
+
+[lint]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "RUF", "ASYNC", "S", "Q", "TC", "ARG"]
+fixable = ["ALL"]
+unfixable = []
+
+# Ignore specific rules for specific files
+[lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]  # Ignore unused imports in __init__ files
+"tests/**/*.py" = ["B", "C4", "E501", "F811"]  # Looser rules for test files
+
+# Ignore certain rules for prompt and mapping files
+"app.py" = ["N806"]
+"**/prompts.py" = ["E501"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+
+
+[lint.mccabe]
+max-complexity = 11

@@ -1,5 +1,6 @@
-import sys
 import json
+import sys
+
 
 def run_stdio_server(handler):
     """
