@@ -1,5 +1,6 @@
 import json
 import sys
+from time import sleep
 
 
 def run_stdio_server(handler):
@@ -10,7 +11,9 @@ def run_stdio_server(handler):
     while True:
         line = sys.stdin.readline()
         if not line:
-            break  # EOF
+            print("No line read", file=sys.stderr)
+            sleep(1)
+            continue
         line = line.strip()
         if not line:
             continue
