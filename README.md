@@ -7,17 +7,40 @@
 1. Ensure you have a running Signoz instance (self-hosted or cloud).
 2. (Optional) If your Signoz instance requires an API key for the health endpoint, generate or obtain it from your Signoz UI.
 
-### 2. Installation & Running Options
+---
 
-#### A. Docker Compose (Recommended)
-1. Edit `config.yaml` with your Signoz details (host, API key if needed).
+## 2. Installation & Running Options
+
+### A. Install & Run with uv (Recommended for Local Development)
+
+#### 1. Install dependencies with uv
+```bash
+uv sync
+```
+
+#### 2. Run the server with uv
+```bash
+uv run src/signoz_mcp_server/mcp_server.py
+```
+- You can also use `uv` to run any other entrypoint scripts as needed.
+- Make sure your `config.yaml` is in the same directory as `mcp_server.py` or set the required environment variables (see Configuration section).
+
+---
+
+### B. Run with Docker Compose (Recommended for Production/Containerized Environments)
+
+1. Edit `src/signoz_mcp_server/config.yaml` with your Signoz details (host, API key if needed).
 2. Start the server:
    ```bash
    docker-compose up -d
    ```
    - The server will run in HTTP (SSE) mode on port 8000 by default.
+   - You can override configuration with environment variables (see below).
 
-#### B. Docker Image (Manual)
+---
+
+### C. Run with Docker Image (Manual)
+
 1. Build the image:
    ```bash
    docker build -t signoz-mcp-server .
@@ -26,7 +49,7 @@
    ```bash
    docker run -d \
      -p 8000:8000 \
-     -v $(pwd)/config.yaml:/app/config.yaml:ro \
+     -v $(pwd)/src/signoz_mcp_server/config.yaml:/app/config.yaml:ro \
      --name signoz-mcp-server \
      signoz-mcp-server
    ```
@@ -41,27 +64,6 @@
      -e MCP_SERVER_DEBUG=true \
      --name signoz-mcp-server \
      signoz-mcp-server
-   ```
-
-#### C. Local Development
-##### Using pip
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Run the server:
-   ```bash
-   python mcp_server.py
-   ```
-
-##### Using uv
-1. Install dependencies:
-   ```bash
-   uv sync
-   ```
-2. Run the server:
-   ```bash
-   uv run mcp_server.py
    ```
 
 ---
@@ -93,13 +95,12 @@ The server loads configuration in the following order of precedence:
 
 You can integrate this MCP server with any tool that supports the MCP protocol. Here are the main options:
 
-### A. Using Local Setup
-Before running the server locally, create a Python virtual environment and install dependencies:
+### A. Using Local Setup (with uv)
+Before running the server locally, install dependencies and run with uv:
 
 ```bash
-python3 -m venv env
-source env/bin/activate
 uv pip install -r requirements.txt
+uv run src/signoz_mcp_server/mcp_server.py
 ```
 
 Then add to your client configuration (e.g., `claude-desktop.json`):
@@ -107,8 +108,8 @@ Then add to your client configuration (e.g., `claude-desktop.json`):
 {
   "mcpServers": {
     "signoz": {
-      "command": "python",
-      "args": ["/full/path/to/mcp_server.py"],
+      "command": "uv",
+      "args": ["run", "/full/path/to/src/signoz_mcp_server/mcp_server.py"],
       "env": {
         "SIGNOZ_HOST": "https://your-signoz-instance.com",
         "SIGNOZ_API_KEY": "your-signoz-api-key-here",
@@ -119,9 +120,8 @@ Then add to your client configuration (e.g., `claude-desktop.json`):
 }
 ```
 - Ensure your `config.yaml` is in the same directory as `mcp_server.py` or update the path accordingly.
-- If you are using Windows, activate the environment with `env\\Scripts\\activate` instead of `source env/bin/activate`.
 
-### B. Using Docker (with environment variables, mcp-grafana style)
+### B. Using Docker Compose or Docker (with environment variables, mcp-grafana style)
 ```json
 {
   "mcpServers": {

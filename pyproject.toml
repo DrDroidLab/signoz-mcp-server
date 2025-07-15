@@ -37,3 +37,6 @@ exclude = [
     "**/env",
     "**/.ruff_cache"
 ]
+
+[tool.uv]
+package = false
