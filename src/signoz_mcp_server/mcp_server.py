@@ -69,7 +69,6 @@ PROTOCOL_VERSION = "2025-06-18"
 
 def get_current_time_iso():
     date_time =  datetime.datetime.now(datetime.timezone.utc).isoformat()
-    print("date_time:::::", date_time)
     return date_time
 
 # Available tools
