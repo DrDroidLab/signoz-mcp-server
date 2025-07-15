@@ -3,4 +3,4 @@ class Processor:
         pass
 
     def test_connection(self):
-        pass 
+        pass

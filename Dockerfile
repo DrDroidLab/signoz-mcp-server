@@ -10,13 +10,13 @@ RUN apt-get update && apt-get install -y \
 
 # Copy pyproject.toml and uv.lock for dependency installation
 COPY uv.lock .
-COPY pyproject.toml .
+COPY .local.pyproject.toml pyproject.toml
 
 # Install Python dependencies using uv
 RUN uv sync
 
 # Copy application code
-COPY . .
+COPY ./src .
 
 # Create a non-root user for security
 RUN useradd -m -u 1000 mcp && chown -R mcp:mcp /app
@@ -25,5 +25,6 @@ USER mcp
 # Expose the port
 EXPOSE 8000
 
-# Run the application
-ENTRYPOINT ["uv", "run", "mcp_server.py"]
+# Set PYTHONPATH and run as a module
+ENV PYTHONPATH=/app
+ENTRYPOINT ["uv", "run", "-m", "signoz_mcp_server.mcp_server"]

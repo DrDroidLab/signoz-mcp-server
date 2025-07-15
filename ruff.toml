@@ -48,16 +48,11 @@ unfixable = []
 "__init__.py" = ["F401", "F403"]  # Ignore unused imports in __init__ files
 "tests/**/*.py" = ["B", "C4", "E501", "F811"]  # Looser rules for test files
 
-# Ignore certain rules for prompt and mapping files
-"app.py" = ["N806"]
-"**/prompts.py" = ["E501"]
 
 [format]
 quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
-
-
 
 [lint.mccabe]
 max-complexity = 11
