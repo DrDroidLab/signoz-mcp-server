@@ -164,7 +164,7 @@ TOOLS_LIST = [
                     "description": "Optional variable overrides as a JSON object"
                 }
             },
-            "required": ["dashboard_name", "start_time", "end_time"]
+            "required": ["dashboard_name"]
         }
     },
     {
@@ -296,9 +296,16 @@ def query_signoz_metrics(start_time, end_time, query, step=None, aggregation=Non
             "message": f"Failed to query metrics: {e!s}"
         }
 
-def fetch_signoz_dashboard_data(dashboard_name, start_time, end_time, step=None, variables_json=None):
-    """Fetch all panel data for a given Signoz dashboard by name and time range."""
+def fetch_signoz_dashboard_data(dashboard_name, start_time=None, end_time=None, step=None, variables_json=None):
+    """Fetch all panel data for a given Signoz dashboard by name and time range. If start_time and end_time are not provided, defaults to last 3 hours."""
+    import time
     try:
+        # Default to last 3 hours if not provided
+        now = int(time.time() * 1000)  # current time in ms
+        if end_time is None:
+            end_time = now
+        if start_time is None:
+            start_time = end_time - 3 * 60 * 60 * 1000  # 3 hours in ms
         signoz_processor = current_app.config["signoz_processor"]
         result = signoz_processor.fetch_dashboard_data(
             dashboard_name=dashboard_name,

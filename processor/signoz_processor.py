@@ -290,11 +290,18 @@ class SignozApiProcessor(Processor):
             raise e
 
 
-    def fetch_dashboard_data(self, dashboard_name, start_time, end_time, step=None, variables_json=None):
+    def fetch_dashboard_data(self, dashboard_name, start_time=None, end_time=None, step=None, variables_json=None):
         """
         Fetches dashboard data for all panels in a specified Signoz dashboard by name.
         Returns a dict with panel results.
+        If start_time and end_time are not provided, defaults to last 3 hours.
         """
+        import time
+        now = int(time.time() * 1000)  # current time in ms
+        if end_time is None:
+            end_time = now
+        if start_time is None:
+            start_time = end_time - 3 * 60 * 60 * 1000  # 3 hours in ms
         try:
             dashboards = self.fetch_dashboards()
             if not dashboards or "data" not in dashboards:
