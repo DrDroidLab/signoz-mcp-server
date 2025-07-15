@@ -44,6 +44,7 @@
    ```
 
 #### C. Local Development
+##### Using pip
 1. Install dependencies:
    ```bash
    pip install -r requirements.txt
@@ -51,6 +52,16 @@
 2. Run the server:
    ```bash
    python mcp_server.py
+   ```
+
+##### Using uv
+1. Install dependencies:
+   ```bash
+   uv sync
+   ```
+2. Run the server:
+   ```bash
+   uv run mcp_server.py
    ```
 
 ---
@@ -88,7 +99,7 @@ Before running the server locally, create a Python virtual environment and insta
 ```bash
 python3 -m venv env
 source env/bin/activate
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 Then add to your client configuration (e.g., `claude-desktop.json`):

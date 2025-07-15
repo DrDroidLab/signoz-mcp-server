@@ -1,5 +1,4 @@
-# Use Python 3.11 slim image for smaller size
-FROM python:3.11-slim
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
 # Set working directory
 WORKDIR /app
@@ -9,11 +8,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better Docker layer caching
-COPY requirements.txt .
+# Copy pyproject.toml and uv.lock for dependency installation
+COPY uv.lock .
+COPY pyproject.toml .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies using uv
+RUN uv sync
 
 # Copy application code
 COPY . .
@@ -26,4 +26,4 @@ USER mcp
 EXPOSE 8000
 
 # Run the application
-ENTRYPOINT ["python", "mcp_server.py"]
+ENTRYPOINT ["uv", "run", "mcp_server.py"]
