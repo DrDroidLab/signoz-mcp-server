@@ -78,7 +78,7 @@ The server loads configuration in the following order of precedence:
 
 ---
 
-## Integration with AI Assistants (e.g., Claude Desktop)
+## Integration with AI Assistants (e.g., Claude Desktop, Cursor)
 
 You can integrate this MCP server with any tool that supports the MCP protocol. Here are the main options:
 
