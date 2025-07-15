@@ -165,6 +165,7 @@ TOOLS_LIST = [
             "required": ["dashboard_name", "start_time", "end_time"]
         }
     },
+    {
         "name": "fetch_apm_metrics",
         "description": "Fetch standard APM metrics (request rate, error rate, latency, apdex, etc.) for a given service and time range.",
         "inputSchema": {
