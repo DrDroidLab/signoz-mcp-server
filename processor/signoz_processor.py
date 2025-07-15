@@ -455,16 +455,4 @@ class SignozApiProcessor(Processor):
             }
         }
         return self._post_query_range(payload)
-        
 
-# if __name__ == "__main__":
-#     signoz_processor = SignozApiProcessor(
-#         signoz_host="https://microservices-signoz.demo.drdroid.io",
-#         signoz_api_key="hrCw98ObIexp5Irl36H7D+qRlnaWuoPPXknozXyBtJI="
-#     )
-#     result = signoz_processor.fetch_apm_metrics(
-#         service_name="emailservice",
-#         start_time=1752505980000,
-#         end_time=1752507660000,
-#         window="5m"
-#     )
