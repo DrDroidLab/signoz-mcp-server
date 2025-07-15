@@ -338,7 +338,10 @@ def health_check():
 
 
 def main():
-    if "-t" in sys.argv and "stdio" in sys.argv:
+    transport = os.environ.get("MCP_TRANSPORT", "http")
+    if (("-t" in sys.argv and "stdio" in sys.argv) or
+        ("--transport" in sys.argv and "stdio" in sys.argv) or
+        (transport == "stdio")):
         run_stdio_server(handle_jsonrpc_request)
     else:
         port = app.config["SERVER_CONFIG"].get("port", 8000)
