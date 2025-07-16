@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # Set working directory
 WORKDIR /app
@@ -16,7 +16,7 @@ COPY pyproject.toml .
 RUN uv sync
 
 # Copy application code
-COPY ./src .
+COPY ./src ./src
 
 # Create a non-root user for security
 RUN useradd -m -u 1000 mcp && chown -R mcp:mcp /app
@@ -27,4 +27,4 @@ EXPOSE 8000
 
 # Set PYTHONPATH and run as a module
 ENV PYTHONPATH=/app
-ENTRYPOINT ["uv", "run", "-m", "signoz_mcp_server.mcp_server"]
+ENTRYPOINT ["uv", "run", "-m", "src.signoz_mcp_server.mcp_server"]
