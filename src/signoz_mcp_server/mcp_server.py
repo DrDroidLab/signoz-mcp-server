@@ -66,9 +66,11 @@ SERVER_CAPABILITIES = {"tools": {}}
 # Protocol version
 PROTOCOL_VERSION = "2025-06-18"
 
+
 def get_current_time_iso():
-    date_time =  datetime.datetime.now(datetime.timezone.utc).isoformat()
+    date_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return date_time
+
 
 # Available tools
 TOOLS_LIST = [
@@ -98,14 +100,18 @@ TOOLS_LIST = [
             "type": "object",
             "properties": {
                 "dashboard_name": {"type": "string", "description": "The name of the dashboard to fetch data for"},
-                "start_time": {"type": "string", "description": (
-                    "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
-                    "or duration string (e.g., '2h', '90m')"
-                )},
-                "end_time": {"type": "string", "description": (
-                    "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
-                    "or duration string (e.g., '2h', '90m')"
-                )},
+                "start_time": {
+                    "type": "string",
+                    "description": (
+                        "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "end_time": {
+                    "type": "string",
+                    "description": (
+                        "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
                 "step": {"type": "number", "description": "Step interval for the query (seconds, optional)"},
                 "variables_json": {"type": "string", "description": "Optional variable overrides as a JSON object"},
                 "duration": {"type": "string", "description": "Duration string for the time window (e.g., '2h', '90m')"},
@@ -123,22 +129,24 @@ TOOLS_LIST = [
             "type": "object",
             "properties": {
                 "service_name": {"type": "string", "description": "The name of the service to fetch APM metrics for"},
-                "start_time": {"type": "string", "description": (
-                    "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
-                    "or duration string (e.g., '2h', '90m')"
-                )},
-                "end_time": {"type": "string", "description": (
-                    "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
-                    "or duration string (e.g., '2h', '90m')"
-                )},
+                "start_time": {
+                    "type": "string",
+                    "description": (
+                        "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "end_time": {
+                    "type": "string",
+                    "description": (
+                        "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
                 "window": {
                     "type": "string",
                     "description": "Query window (e.g., '1m', '5m'). Default: '1m'",
                     "default": "1m",
                 },
-                "duration": {"type": "string", "description": (
-                    "Duration string for the time window (e.g., '2h', '90m')"
-                )},
+                "duration": {"type": "string", "description": ("Duration string for the time window (e.g., '2h', '90m')")},
             },
             "required": ["service_name"],
         },
@@ -147,19 +155,26 @@ TOOLS_LIST = [
         "name": "fetch_services",
         "description": "Fetch all instrumented services from SigNoz.",
         "inputSchema": {
-            "type": "object", 
+            "type": "object",
             "properties": {
-                "start_time": {"type": "string", "description": (
-                    "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
-                    "or duration string (e.g., '2h', '90m')"
-                )},
-                "end_time": {"type": "string", "description": (
-                    "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
-                    "or duration string (e.g., '2h', '90m')"
-                )},
-                "duration": {"type": "string", "description": "Duration string for the time window (e.g., '2h', '90m'). Defaults to last 24 hours if not provided."},
+                "start_time": {
+                    "type": "string",
+                    "description": (
+                        "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "end_time": {
+                    "type": "string",
+                    "description": (
+                        "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Duration string for the time window (e.g., '2h', '90m'). Defaults to last 24 hours if not provided.",
+                },
             },
-            "required": []
+            "required": [],
         },
     },
 ]
@@ -212,20 +227,14 @@ def fetch_signoz_dashboard_details(dashboard_id):
         return {"status": "error", "message": f"Failed to fetch dashboard details: {e!s}"}
 
 
-
 def fetch_signoz_dashboard_data(dashboard_name, start_time=None, end_time=None, step=None, variables_json=None, duration=None):
     """Fetch all panel data for a given Signoz dashboard by name and time range.
-       Accepts start_time and end_time as RFC3339 or relative strings, or a duration string.
-       If start_time and end_time are not provided, defaults to last 3 hours."""
+    Accepts start_time and end_time as RFC3339 or relative strings, or a duration string.
+    If start_time and end_time are not provided, defaults to last 3 hours."""
     try:
         signoz_processor = current_app.config["signoz_processor"]
         result = signoz_processor.fetch_dashboard_data(
-            dashboard_name=dashboard_name,
-            start_time=start_time,
-            end_time=end_time,
-            step=step,
-            variables_json=variables_json,
-            duration=duration
+            dashboard_name=dashboard_name, start_time=start_time, end_time=end_time, step=step, variables_json=variables_json, duration=duration
         )
         if result.get("status") == "success":
             return {"status": "success", "message": f"Successfully fetched dashboard data for: {dashboard_name}", "data": result}
@@ -358,9 +367,7 @@ def health_check():
 
 def main():
     transport = os.environ.get("MCP_TRANSPORT", "http")
-    if (("-t" in sys.argv and "stdio" in sys.argv) or
-        ("--transport" in sys.argv and "stdio" in sys.argv) or
-        (transport == "stdio")):
+    if ("-t" in sys.argv and "stdio" in sys.argv) or ("--transport" in sys.argv and "stdio" in sys.argv) or (transport == "stdio"):
 
         def stdio_handler(data):
             with app.app_context():
@@ -371,6 +378,7 @@ def main():
         port = app.config["SERVER_CONFIG"].get("port", 8000)
         debug = app.config["SERVER_CONFIG"].get("debug", True)
         app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 if __name__ == "__main__":
     main()
