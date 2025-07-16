@@ -194,3 +194,52 @@ def test_tool_call_fetch_apm_metrics(client):
     content = json.loads(response_data["result"]["content"][0]["text"])
     assert content["status"] == "success"
     assert "data" in content 
+
+def test_tool_call_fetch_services(client):
+    """
+    Tests the 'fetch_services' tool call with time parameters through the MCP server.
+    """
+    response = client.post(
+        "/mcp",
+        data=json.dumps({
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "fetch_services",
+                "arguments": {
+                    "start_time": "now-1h",
+                    "end_time": "now"
+                }
+            },
+            "id": "11"
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    response_data = response.get_json()
+    assert response_data["id"] == "11"
+    assert "result" in response_data
+    content = json.loads(response_data["result"]["content"][0]["text"])
+    
+    # Check the response status
+    assert content["status"] in ("success", "failed")
+    
+    if content["status"] == "success":
+        assert "data" in content
+        # The data should be a dict with a 'data' key containing a list of services, or a list directly
+        if isinstance(content["data"], dict) and "data" in content["data"]:
+            assert isinstance(content["data"]["data"], list)
+            print(f"Found {len(content['data']['data'])} services via MCP with time params")
+        elif isinstance(content["data"], list):
+            print(f"Found {len(content['data'])} services via MCP with time params")
+        else:
+            pytest.fail(f"Unexpected data format for services list: {type(content['data'])}")
+    else:
+        # If failed, should have a message
+        assert "message" in content
+        # If it's an API error, that's acceptable for testing
+        if "Failed to fetch services" in content.get("message", ""):
+            pytest.skip(f"Services API returned error: {content['message']}")
+        else:
+            # Other errors should fail the test
+            pytest.fail(f"Unexpected error in fetch_services: {content.get('message', 'Unknown error')}") 

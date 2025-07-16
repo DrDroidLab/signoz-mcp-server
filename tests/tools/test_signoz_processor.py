@@ -81,3 +81,18 @@ def test_fetch_apm_metrics(processor):
                     return
 
     pytest.skip("Could not find a service name to test APM metrics") 
+
+def test_fetch_services(processor):
+    """
+    Tests fetching all instrumented services from the live Signoz API.
+    """
+    result = processor.fetch_services()
+    print(result)
+    if isinstance(result, dict) and result.get("status") == "error":
+        pytest.fail(result.get("message", "Failed to fetch services"))
+    elif isinstance(result, dict) and "data" in result:
+        assert isinstance(result["data"], list)
+    elif isinstance(result, list):
+        pass
+    else:
+        pytest.fail("Unexpected result format from fetch_services") 

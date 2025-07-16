@@ -213,6 +213,54 @@ class SignozApiProcessor(Processor):
             logger.error(f"Exception when fetching dashboard details: {e}")
             raise e
 
+    def fetch_services(self, start_time=None, end_time=None, duration=None):
+        """
+        Fetches all instrumented services from SigNoz.
+        Accepts start_time and end_time as RFC3339 or relative strings (e.g., 'now-2h', 'now-30m'), or a duration string (e.g., '2h', '90m').
+        If duration is provided, uses that as the window ending at now. If start_time and end_time are provided, uses those. Defaults to last 24 hours.
+        Returns a list of services or error details.
+        """
+        # Determine time range (default to last 24 hours)
+        now_dt = datetime.now(timezone.utc)
+        if start_time and end_time:
+            start_dt = self._parse_time(start_time)
+            end_dt = self._parse_time(end_time)
+            if not start_dt or not end_dt:
+                # fallback to default
+                start_dt = now_dt - timedelta(hours=24)
+                end_dt = now_dt
+        elif duration:
+            dur_ms = self._parse_duration(duration)
+            if dur_ms is None:
+                dur_ms = 24 * 60 * 60 * 1000  # fallback to 24h
+            start_dt = now_dt - timedelta(milliseconds=dur_ms)
+            end_dt = now_dt
+        else:
+            start_dt = now_dt - timedelta(hours=24)
+            end_dt = now_dt
+        
+        # Convert to nanoseconds (SigNoz expects nanoseconds)
+        start_ns = int(start_dt.timestamp() * 1_000_000_000)
+        end_ns = int(end_dt.timestamp() * 1_000_000_000)
+        
+        try:
+            url = f"{self.__host}/api/v1/services"
+            payload = {
+                "start": str(start_ns),
+                "end": str(end_ns),
+                "tags": []
+            }
+            response = requests.post(url, headers=self.headers, json=payload, verify=self.__ssl_verify, timeout=30)
+            print(f"Services API response: {response.text}")
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"Failed to fetch services: {response.status_code} - {response.text}")
+                return {"status": "error", "message": f"Failed to fetch services: {response.status_code}", "details": response.text}
+        except Exception as e:
+            logger.error(f"Exception when fetching services: {e}")
+            return {"status": "error", "message": str(e)}
+
     def _parse_step(self, step):
         """Parse step interval from string like '5m', '1h', or integer seconds."""
         if isinstance(step, int):

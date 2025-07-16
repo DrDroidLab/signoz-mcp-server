@@ -143,6 +143,25 @@ TOOLS_LIST = [
             "required": ["service_name"],
         },
     },
+    {
+        "name": "fetch_services",
+        "description": "Fetch all instrumented services from SigNoz.",
+        "inputSchema": {
+            "type": "object", 
+            "properties": {
+                "start_time": {"type": "string", "description": (
+                    "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
+                    "or duration string (e.g., '2h', '90m')"
+                )},
+                "end_time": {"type": "string", "description": (
+                    "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
+                    "or duration string (e.g., '2h', '90m')"
+                )},
+                "duration": {"type": "string", "description": "Duration string for the time window (e.g., '2h', '90m'). Defaults to last 24 hours if not provided."},
+            },
+            "required": []
+        },
+    },
 ]
 
 
@@ -233,6 +252,18 @@ def fetch_signoz_apm_metrics(service_name, start_time=None, end_time=None, windo
         return {"status": "error", "message": f"Failed to fetch APM metrics: {e!s}"}
 
 
+def fetch_signoz_services(start_time=None, end_time=None, duration=None):
+    """Fetch all instrumented services from SigNoz"""
+    try:
+        signoz_processor = current_app.config["signoz_processor"]
+        result = signoz_processor.fetch_services(start_time, end_time, duration)
+        if result and (isinstance(result, dict) and result.get("status") == "error"):
+            return {"status": "failed", "message": result.get("message", "Failed to fetch services"), "details": result.get("details")}
+        return {"status": "success", "message": "Successfully fetched services", "data": result}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to fetch services: {e!s}"}
+
+
 # Function mapping
 FUNCTION_MAPPING = {
     "test_connection": test_signoz_connection,
@@ -240,6 +271,7 @@ FUNCTION_MAPPING = {
     "fetch_dashboard_details": fetch_signoz_dashboard_details,
     "fetch_dashboard_data": fetch_signoz_dashboard_data,
     "fetch_apm_metrics": fetch_signoz_apm_metrics,
+    "fetch_services": fetch_signoz_services,
 }
 
 
