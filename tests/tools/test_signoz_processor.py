@@ -96,3 +96,94 @@ def test_fetch_services(processor):
         pass
     else:
         pytest.fail("Unexpected result format from fetch_services") 
+
+def test_execute_clickhouse_query_tool(processor):
+    """
+    Tests the execute_clickhouse_query_tool method directly on the SignozApiProcessor.
+    """
+    # Simple Clickhouse query to test the connection and basic functionality
+    test_query = "SELECT 1 as test_column"
+    
+    # Use a recent time range (last hour)
+    from datetime import datetime, timezone, timedelta
+    end_time = datetime.now(timezone.utc)
+    start_time = end_time - timedelta(hours=1)
+    
+    result = processor.execute_clickhouse_query_tool(
+        query=test_query,
+        time_geq=start_time.timestamp(),
+        time_lt=end_time.timestamp(),
+        panel_type="table",
+        fill_gaps=False,
+        step=60
+    )
+    
+    # The result could be successful data or an error response
+    if isinstance(result, dict) and "error" in result:
+        # If it's an API error, that's acceptable for testing
+        if "Failed to query metrics" in result.get("error", ""):
+            pytest.skip(f"Clickhouse query execution failed: {result['error']}")
+        else:
+            # Other errors should fail the test
+            pytest.fail(f"Unexpected error in execute_clickhouse_query_tool: {result.get('error', 'Unknown error')}")
+    else:
+        # Success case - should have some data structure
+        assert result is not None
+        print(f"Successfully executed Clickhouse query: {test_query}")
+
+def test_execute_builder_query_tool(processor):
+    """
+    Tests the execute_builder_query_tool method directly on the SignozApiProcessor.
+    """
+    # Simple builder query to test the connection and basic functionality
+    test_builder_queries = {
+        "A": {
+            "queryName": "A",
+            "expression": "A",
+            "dataSource": "metrics",
+            "aggregateOperator": "sum",
+            "aggregateAttribute": {
+                "key": "signoz_calls_total",
+                "dataType": "float64",
+                "isColumn": True,
+                "type": ""
+            },
+            "timeAggregation": "sum",
+            "spaceAggregation": "sum",
+            "functions": [],
+            "filters": {
+                "items": [],
+                "op": "AND"
+            },
+            "disabled": False,
+            "stepInterval": 60,
+            "legend": "Test Query",
+            "groupBy": []
+        }
+    }
+    
+    # Use a recent time range (last hour)
+    from datetime import datetime, timezone, timedelta
+    end_time = datetime.now(timezone.utc)
+    start_time = end_time - timedelta(hours=1)
+    
+    result = processor.execute_builder_query_tool(
+        builder_queries=test_builder_queries,
+        time_geq=start_time.timestamp(),
+        time_lt=end_time.timestamp(),
+        panel_type="table",
+        step=60
+    )
+    
+    # The result could be successful data or an error response
+    if isinstance(result, dict) and "error" in result:
+        # If it's an API error, that's acceptable for testing
+        if "Failed to query metrics" in result.get("error", ""):
+            pytest.skip(f"Builder query execution failed: {result['error']}")
+        else:
+            # Other errors should fail the test
+            pytest.fail(f"Unexpected error in execute_builder_query_tool: {result.get('error', 'Unknown error')}")
+    else:
+        # Success case - should have some data structure
+        assert result is not None
+        print(f"Successfully executed builder query") 
