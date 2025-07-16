@@ -14,6 +14,24 @@ The following tools are available via the MCP server:
 - **fetch_services**: Fetch all instrumented services from Signoz with optional time range filtering.
 - **execute_clickhouse_query**: Execute custom Clickhouse SQL queries via the Signoz API with time range support.
 - **execute_builder_query**: Execute Signoz builder queries for custom metrics and aggregations with time range support.
+- **fetch_traces_or_logs**: Fetch traces or logs from SigNoz using ClickHouse SQL. Specify `data_type` ('traces' or 'logs'), time range, service name, and limit. Returns tabular results for traces or logs.
+
+### Example Usage
+
+#### Fetch Traces
+
+```json
+{
+  "name": "fetch_traces_or_logs",
+  "arguments": {
+    "data_type": "traces",
+    "start_time": "now-1h",
+    "end_time": "now",
+    "service_name": "my-service",
+    "limit": 10
+  }
+}
+```
 
 ## 🚀 Usage & Requirements
 
