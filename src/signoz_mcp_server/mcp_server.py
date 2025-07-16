@@ -257,6 +257,22 @@ TOOLS_LIST = [
             "required": ["builder_queries"],
         },
     },
+    {
+        "name": "fetch_traces_or_logs",
+        "description": "Fetch traces or logs from SigNoz using ClickHouse SQL. Specify data_type ('traces' or 'logs'). Supports time range, service_name, and limit.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "data_type": {"type": "string", "description": "'traces' or 'logs' (required)"},
+                "start_time": {"type": "string", "description": "Start time (RFC3339, 'now-2h', etc.)"},
+                "end_time": {"type": "string", "description": "End time (RFC3339, 'now', etc.)"},
+                "duration": {"type": "string", "description": "Duration string (e.g., '2h', '90m')"},
+                "service_name": {"type": "string", "description": "Filter by service name (optional)"},
+                "limit": {"type": "number", "description": "Max number of records to return (default 100)"}
+            },
+            "required": ["data_type"]
+        }
+    },
 ]
 
 
@@ -394,6 +410,44 @@ def execute_signoz_builder_query(builder_queries, start_time=None, end_time=None
         return {"status": "error", "message": f"Failed to execute builder query: {e!s}"}
 
 
+def fetch_signoz_traces_or_logs(data_type, start_time=None, end_time=None, duration=None, service_name=None, limit=100):
+    """Fetch traces or logs from SigNoz using ClickHouse SQL."""
+    try:
+        signoz_processor = current_app.config["signoz_processor"]
+        # Use the same time range logic as other tools
+        start_dt, end_dt = signoz_processor._get_time_range(start_time, end_time, duration, default_hours=3)
+        time_geq = int(start_dt.timestamp())
+        time_lt = int(end_dt.timestamp())
+        limit = int(limit) if limit else 100
+        if data_type == "traces":
+            table = "signoz_traces.distributed_signoz_index_v3"
+            select_cols = "traceID, serviceName, name, durationNano, statusCode, timestamp"
+            where_clauses = [f"timestamp >= toDateTime64({int(start_dt.timestamp())}, 9)", f"timestamp < toDateTime64({int(end_dt.timestamp())}, 9)"]
+            if service_name:
+                where_clauses.append(f"serviceName = '{service_name}'")
+        elif data_type == "logs":
+            table = "signoz_logs.distributed_logs"
+            select_cols = "timestamp, body, severity_text, resource_attributes, trace_id, span_id"
+            where_clauses = [f"timestamp >= toDateTime64({int(start_dt.timestamp())}, 9)", f"timestamp < toDateTime64({int(end_dt.timestamp())}, 9)"]
+            if service_name:
+                where_clauses.append(f"JSONExtractString(resource_attributes, 'service.name') = '{service_name}'")
+        else:
+            return {"status": "error", "message": f"Invalid data_type: {data_type}. Must be 'traces' or 'logs'."}
+        where_sql = " AND ".join(where_clauses)
+        query = f"SELECT {select_cols} FROM {table} WHERE {where_sql} LIMIT {limit}"
+        result = signoz_processor.execute_clickhouse_query_tool(
+            query=query,
+            time_geq=time_geq,
+            time_lt=time_lt,
+            panel_type="table",
+            fill_gaps=False,
+            step=60
+        )
+        return {"status": "success", "message": f"Fetched {data_type}", "data": result, "query": query}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to fetch {data_type}: {e!s}"}
+
+
 # Function mapping
 FUNCTION_MAPPING = {
     "test_connection": test_signoz_connection,
@@ -404,6 +458,7 @@ FUNCTION_MAPPING = {
     "fetch_services": fetch_signoz_services,
     "execute_clickhouse_query": execute_signoz_clickhouse_query,
     "execute_builder_query": execute_signoz_builder_query,
+    "fetch_traces_or_logs": fetch_signoz_traces_or_logs,
 }
 
 
