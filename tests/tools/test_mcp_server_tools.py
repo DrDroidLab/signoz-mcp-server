@@ -364,3 +364,106 @@ def test_tool_call_execute_builder_query(client):
         else:
             # Other errors should fail the test
             pytest.fail(f"Unexpected error in execute_builder_query: {content.get('message', 'Unknown error')}") 
+
+def test_tool_call_fetch_traces_or_logs_traces(client):
+    """
+    Tests the 'fetch_traces_or_logs' tool call for traces through the MCP server.
+    """
+    response = client.post(
+        "/mcp",
+        data=json.dumps({
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "fetch_traces_or_logs",
+                "arguments": {
+                    "data_type": "traces",
+                    "start_time": "now-1h",
+                    "end_time": "now",
+                    "limit": 5
+                }
+            },
+            "id": "14"
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    response_data = response.get_json()
+    assert response_data["id"] == "14"
+    assert "result" in response_data
+    content = json.loads(response_data["result"]["content"][0]["text"])
+    assert content["status"] in ("success", "error")
+    if content["status"] == "success":
+        assert "data" in content
+        assert "query" in content
+        print(f"Fetched traces: {content['data']}")
+    else:
+        assert "message" in content
+        print(f"Error fetching traces: {content['message']}")
+
+def test_tool_call_fetch_traces_or_logs_logs(client):
+    """
+    Tests the 'fetch_traces_or_logs' tool call for logs through the MCP server.
+    """
+    response = client.post(
+        "/mcp",
+        data=json.dumps({
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "fetch_traces_or_logs",
+                "arguments": {
+                    "data_type": "logs",
+                    "start_time": "now-1h",
+                    "end_time": "now",
+                    "limit": 5
+                }
+            },
+            "id": "15"
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    response_data = response.get_json()
+    assert response_data["id"] == "15"
+    assert "result" in response_data
+    content = json.loads(response_data["result"]["content"][0]["text"])
+    assert content["status"] in ("success", "error")
+    if content["status"] == "success":
+        assert "data" in content
+        assert "query" in content
+        print(f"Fetched logs: {content['data']}")
+    else:
+        assert "message" in content
+        print(f"Error fetching logs: {content['message']}")
+
+def test_tool_call_fetch_traces_or_logs_invalid_type(client):
+    """
+    Tests the 'fetch_traces_or_logs' tool call with an invalid data_type.
+    """
+    response = client.post(
+        "/mcp",
+        data=json.dumps({
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "fetch_traces_or_logs",
+                "arguments": {
+                    "data_type": "invalid_type",
+                    "start_time": "now-1h",
+                    "end_time": "now",
+                    "limit": 5
+                }
+            },
+            "id": "16"
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    response_data = response.get_json()
+    assert response_data["id"] == "16"
+    assert "result" in response_data
+    content = json.loads(response_data["result"]["content"][0]["text"])
+    assert content["status"] == "error"
+    assert "Invalid data_type" in content["message"]
+    print(f"Correctly handled invalid data_type: {content['message']}") 
