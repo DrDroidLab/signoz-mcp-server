@@ -338,7 +338,7 @@ def main():
     else:
         port = app.config["SERVER_CONFIG"].get("port", 8000)
         debug = app.config["SERVER_CONFIG"].get("debug", True)
-        app.run(host="0.0.0.0", port=port, debug=debug)  # noqa: S104
+        app.run(host="0.0.0.0", port=port, debug=debug)
 
 if __name__ == "__main__":
     main()
