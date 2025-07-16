@@ -423,42 +423,29 @@ def fetch_signoz_traces_or_logs(data_type, start_time=None, end_time=None, durat
         time_geq = int(start_dt.timestamp())
         time_lt = int(end_dt.timestamp())
         limit = int(limit) if limit else 100
-        # Validate data_type and table/column names to prevent SQL injection
         if data_type == "traces":
-            # Only allow hardcoded, validated table and columns (no longer need table/select_cols variables)
-            where_clauses = ["timestamp >= toDateTime64(%s, 9)", "timestamp < toDateTime64(%s, 9)"]
-            params = [int(start_dt.timestamp()), int(end_dt.timestamp())]
+            table = "signoz_traces.distributed_signoz_index_v3"
+            select_cols = "traceID, serviceName, name, durationNano, statusCode, timestamp"
+            where_clauses = [f"timestamp >= toDateTime64({int(start_dt.timestamp())}, 9)", f"timestamp < toDateTime64({int(end_dt.timestamp())}, 9)"]
             if service_name:
-                where_clauses.append("serviceName = %s")
-                params.append(service_name)
+                where_clauses.append(f"serviceName = '{service_name}'")
         elif data_type == "logs":
-            # Removed unused table and select_cols assignments
-            where_clauses = ["timestamp >= toDateTime64(%s, 9)", "timestamp < toDateTime64(%s, 9)"]
-            params = [int(start_dt.timestamp()), int(end_dt.timestamp())]
+            table = "signoz_logs.distributed_logs"
+            select_cols = "timestamp, body, severity_text, resource_attributes, trace_id, span_id"
+            where_clauses = [f"timestamp >= toDateTime64({int(start_dt.timestamp())}, 9)", f"timestamp < toDateTime64({int(end_dt.timestamp())}, 9)"]
             if service_name:
-                where_clauses.append("JSONExtractString(resource_attributes, 'service.name') = %s")
-                params.append(service_name)
+                where_clauses.append(f"JSONExtractString(resource_attributes, 'service.name') = '{service_name}'")
         else:
             return {"status": "error", "message": f"Invalid data_type: {data_type}. Must be 'traces' or 'logs'."}
-        # Map data_type to static query templates (no user input in structure)
-        query_templates = {
-            "traces": (
-                "SELECT traceID, serviceName, name, durationNano, statusCode, timestamp "
-                "FROM signoz_traces.distributed_signoz_index_v3 WHERE {where_sql} LIMIT %s"
-            ),
-            "logs": (
-                "SELECT timestamp, body, severity_text, resource_attributes, trace_id, span_id "
-                "FROM signoz_logs.distributed_logs WHERE {where_sql} LIMIT %s"
-            ),
-        }
-        if data_type not in query_templates:
-            return {"status": "error", "message": f"Invalid data_type: {data_type}. Must be 'traces' or 'logs'."}
         where_sql = " AND ".join(where_clauses)
-        # Use only static, validated query templates
-        query = query_templates[data_type].format(where_sql=where_sql)
-        params.append(int(limit))  # Ensure limit is always an integer
+        query = f"SELECT {select_cols} FROM {table} WHERE {where_sql} LIMIT {limit}"
         result = signoz_processor.execute_clickhouse_query_tool(
-            query=query, query_params=params, time_geq=time_geq, time_lt=time_lt, panel_type="table", fill_gaps=False, step=60
+            query=query,
+            time_geq=time_geq,
+            time_lt=time_lt,
+            panel_type="table",
+            fill_gaps=False,
+            step=60
         )
         return {"status": "success", "message": f"Fetched {data_type}", "data": result, "query": query}
     except Exception as e:
