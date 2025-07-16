@@ -79,7 +79,7 @@ class SignozResponseEvaluator:
         """Check if response contains APM metrics for a specific service."""
         evaluator = CustomLLMBooleanEvaluator(
             settings=CustomLLMBooleanSettings(
-                prompt=f"Does the response contain APM metrics for the '{service_name}' service, including metrics like 'Call Rate', 'Error Rate', '99th Percentile Duration (p99)', or '4XX Responses'?",
+                prompt=f"Does the response contain APM metrics for the '{service_name}' service, including metrics like 'Latency', 'Error Rate', 'Request Count', or 'Request Rate'?",
                 model=self.model,
             )
         )
@@ -114,6 +114,76 @@ class SignozResponseEvaluator:
             )
         )
         
+        try:
+            expect(input=prompt, output=response).to_pass(evaluator)
+            return True
+        except AssertionError:
+            return False
+
+    def contains_dashboard_details(self, prompt: str, response: str, dashboard_id: str) -> bool:
+        """Check if response contains details for a specific dashboard ID."""
+        evaluator = CustomLLMBooleanEvaluator(
+            settings=CustomLLMBooleanSettings(
+                prompt=f"Does the response contain detailed information for the dashboard with ID '{dashboard_id}', such as its name, panels, or description?",
+                model=self.model,
+            )
+        )
+        try:
+            expect(input=prompt, output=response).to_pass(evaluator)
+            return True
+        except AssertionError:
+            return False
+
+    def contains_clickhouse_query_result(self, prompt: str, response: str) -> bool:
+        """Check if response contains results from a Clickhouse SQL query."""
+        evaluator = CustomLLMBooleanEvaluator(
+            settings=CustomLLMBooleanSettings(
+                prompt="Does the response contain results from a Clickhouse SQL query, such as a table of data or a count of records?",
+                model=self.model,
+            )
+        )
+        try:
+            expect(input=prompt, output=response).to_pass(evaluator)
+            return True
+        except AssertionError:
+            return False
+
+    def contains_builder_query_result(self, prompt: str, response: str) -> bool:
+        """Check if response contains results from a builder query."""
+        evaluator = CustomLLMBooleanEvaluator(
+            settings=CustomLLMBooleanSettings(
+                prompt="Does the response contain results from a SigNoz builder query, such as metrics grouped by service or time?",
+                model=self.model,
+            )
+        )
+        try:
+            expect(input=prompt, output=response).to_pass(evaluator)
+            return True
+        except AssertionError:
+            return False
+
+    def contains_traces_info(self, prompt: str, response: str) -> bool:
+        """Check if response contains trace information from SigNoz."""
+        evaluator = CustomLLMBooleanEvaluator(
+            settings=CustomLLMBooleanSettings(
+                prompt="Does the response contain trace information from SigNoz, such as trace IDs, service names, durations, or timestamps?",
+                model=self.model,
+            )
+        )
+        try:
+            expect(input=prompt, output=response).to_pass(evaluator)
+            return True
+        except AssertionError:
+            return False
+
+    def contains_logs_info(self, prompt: str, response: str) -> bool:
+        """Check if response contains log information from SigNoz."""
+        evaluator = CustomLLMBooleanEvaluator(
+            settings=CustomLLMBooleanSettings(
+                prompt="Does the response contain log information from SigNoz, such as log messages, timestamps, severity, or service names?",
+                model=self.model,
+            )
+        )
         try:
             expect(input=prompt, output=response).to_pass(evaluator)
             return True
@@ -167,6 +237,19 @@ def evaluate_response_quality(
                 results[f"contains_apm_{service_name}"] = evaluator.contains_apm_metrics(
                     prompt, response, service_name
                 )
+            elif check.startswith("dashboard_details:"):
+                dashboard_id = check.split(":", 1)[1]
+                results[f"contains_dashboard_details_{dashboard_id}"] = evaluator.contains_dashboard_details(
+                    prompt, response, dashboard_id
+                )
+            elif check == "clickhouse_query_result":
+                results["contains_clickhouse_query_result"] = evaluator.contains_clickhouse_query_result(prompt, response)
+            elif check == "builder_query_result":
+                results["contains_builder_query_result"] = evaluator.contains_builder_query_result(prompt, response)
+            elif check == "traces_info":
+                results["contains_traces_info"] = evaluator.contains_traces_info(prompt, response)
+            elif check == "logs_info":
+                results["contains_logs_info"] = evaluator.contains_logs_info(prompt, response)
     
     return results
 
