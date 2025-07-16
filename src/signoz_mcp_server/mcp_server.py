@@ -177,6 +177,37 @@ TOOLS_LIST = [
             "required": [],
         },
     },
+    {
+        "name": "execute_clickhouse_query",
+        "description": "Execute a Clickhouse SQL query via the Signoz API.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The Clickhouse SQL query to execute."},
+                "time_geq": {"type": "number", "description": "Start time (UNIX timestamp, seconds)."},
+                "time_lt": {"type": "number", "description": "End time (UNIX timestamp, seconds)."},
+                "panel_type": {"type": "string", "description": "Panel type (e.g., 'table', 'graph').", "default": "table"},
+                "fill_gaps": {"type": "boolean", "description": "Whether to fill gaps in the data.", "default": False},
+                "step": {"type": "number", "description": "Step interval in seconds.", "default": 60},
+            },
+            "required": ["query", "time_geq", "time_lt"],
+        },
+    },
+    {
+        "name": "execute_builder_query",
+        "description": "Execute a Signoz builder query via the Signoz API.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "builder_queries": {"type": "object", "description": "Builder queries as a JSON object."},
+                "time_geq": {"type": "number", "description": "Start time (UNIX timestamp, seconds)."},
+                "time_lt": {"type": "number", "description": "End time (UNIX timestamp, seconds)."},
+                "panel_type": {"type": "string", "description": "Panel type (e.g., 'table', 'graph').", "default": "table"},
+                "step": {"type": "number", "description": "Step interval in seconds.", "default": 60},
+            },
+            "required": ["builder_queries", "time_geq", "time_lt"],
+        },
+    },
 ]
 
 
@@ -273,6 +304,37 @@ def fetch_signoz_services(start_time=None, end_time=None, duration=None):
         return {"status": "error", "message": f"Failed to fetch services: {e!s}"}
 
 
+def execute_signoz_clickhouse_query(query, time_geq, time_lt, panel_type="table", fill_gaps=False, step=60):
+    """Execute a Clickhouse SQL query via the Signoz API."""
+    try:
+        signoz_processor = current_app.config["signoz_processor"]
+        result = signoz_processor.execute_clickhouse_query_tool(
+            query=query,
+            time_geq=time_geq,
+            time_lt=time_lt,
+            panel_type=panel_type,
+            fill_gaps=fill_gaps,
+            step=step,
+        )
+        return {"status": "success", "message": "Successfully executed Clickhouse query", "data": result}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to execute Clickhouse query: {e!s}"}
+
+def execute_signoz_builder_query(builder_queries, time_geq, time_lt, panel_type="table", step=60):
+    """Execute a Signoz builder query via the Signoz API."""
+    try:
+        signoz_processor = current_app.config["signoz_processor"]
+        result = signoz_processor.execute_builder_query_tool(
+            builder_queries=builder_queries,
+            time_geq=time_geq,
+            time_lt=time_lt,
+            panel_type=panel_type,
+            step=step,
+        )
+        return {"status": "success", "message": "Successfully executed builder query", "data": result}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to execute builder query: {e!s}"}
+
 # Function mapping
 FUNCTION_MAPPING = {
     "test_connection": test_signoz_connection,
@@ -281,6 +343,8 @@ FUNCTION_MAPPING = {
     "fetch_dashboard_data": fetch_signoz_dashboard_data,
     "fetch_apm_metrics": fetch_signoz_apm_metrics,
     "fetch_services": fetch_signoz_services,
+    "execute_clickhouse_query": execute_signoz_clickhouse_query,
+    "execute_builder_query": execute_signoz_builder_query,
 }
 
 
