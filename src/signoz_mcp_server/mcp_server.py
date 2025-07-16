@@ -66,9 +66,11 @@ SERVER_CAPABILITIES = {"tools": {}}
 # Protocol version
 PROTOCOL_VERSION = "2025-06-18"
 
+
 def get_current_time_iso():
-    date_time =  datetime.datetime.now(datetime.timezone.utc).isoformat()
+    date_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return date_time
+
 
 # Available tools
 TOOLS_LIST = [
@@ -92,35 +94,24 @@ TOOLS_LIST = [
         },
     },
     {
-        "name": "query_metrics",
-        "description": "Query metrics from Signoz with specified time range and query parameters.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "start_time": {"type": "number", "description": "Start time in Unix timestamp (seconds or milliseconds)"},
-                "end_time": {"type": "number", "description": "End time in Unix timestamp (seconds or milliseconds)"},
-                "query": {"type": "string", "description": "The metrics query to execute"},
-                "step": {"type": "string", "description": "Optional step interval for the query (e.g., '1m', '5m', '1h')"},
-                "aggregation": {"type": "string", "description": "Optional aggregation function (e.g., 'avg', 'sum', 'min', 'max')"},
-            },
-            "required": ["start_time", "end_time", "query"],
-        },
-    },
-    {
         "name": "fetch_dashboard_data",
         "description": f"Fetch all panel data for a given Signoz dashboard by name and time range. Current datetime is {get_current_time_iso()}",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "dashboard_name": {"type": "string", "description": "The name of the dashboard to fetch data for"},
-                "start_time": {"type": "string", "description": (
-                    "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
-                    "or duration string (e.g., '2h', '90m')"
-                )},
-                "end_time": {"type": "string", "description": (
-                    "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
-                    "or duration string (e.g., '2h', '90m')"
-                )},
+                "start_time": {
+                    "type": "string",
+                    "description": (
+                        "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "end_time": {
+                    "type": "string",
+                    "description": (
+                        "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
                 "step": {"type": "number", "description": "Step interval for the query (seconds, optional)"},
                 "variables_json": {"type": "string", "description": "Optional variable overrides as a JSON object"},
                 "duration": {"type": "string", "description": "Duration string for the time window (e.g., '2h', '90m')"},
@@ -138,24 +129,52 @@ TOOLS_LIST = [
             "type": "object",
             "properties": {
                 "service_name": {"type": "string", "description": "The name of the service to fetch APM metrics for"},
-                "start_time": {"type": "string", "description": (
-                    "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
-                    "or duration string (e.g., '2h', '90m')"
-                )},
-                "end_time": {"type": "string", "description": (
-                    "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') "
-                    "or duration string (e.g., '2h', '90m')"
-                )},
+                "start_time": {
+                    "type": "string",
+                    "description": (
+                        "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "end_time": {
+                    "type": "string",
+                    "description": (
+                        "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
                 "window": {
                     "type": "string",
                     "description": "Query window (e.g., '1m', '5m'). Default: '1m'",
                     "default": "1m",
                 },
-                "duration": {"type": "string", "description": (
-                    "Duration string for the time window (e.g., '2h', '90m')"
-                )},
+                "duration": {"type": "string", "description": ("Duration string for the time window (e.g., '2h', '90m')")},
             },
             "required": ["service_name"],
+        },
+    },
+    {
+        "name": "fetch_services",
+        "description": "Fetch all instrumented services from SigNoz.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "start_time": {
+                    "type": "string",
+                    "description": (
+                        "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "end_time": {
+                    "type": "string",
+                    "description": (
+                        "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "duration": {
+                    "type": "string",
+                    "description": "Duration string for the time window (e.g., '2h', '90m'). Defaults to last 24 hours if not provided.",
+                },
+            },
+            "required": [],
         },
     },
 ]
@@ -208,38 +227,14 @@ def fetch_signoz_dashboard_details(dashboard_id):
         return {"status": "error", "message": f"Failed to fetch dashboard details: {e!s}"}
 
 
-# Query metrics function
-def query_signoz_metrics(start_time, end_time, query, step=None, aggregation=None):
-    """Query metrics from Signoz with specified parameters"""
-    try:
-        signoz_processor = current_app.config["signoz_processor"]
-        result = signoz_processor.query_metrics(start_time, end_time, query, step, aggregation)
-        if result:
-            return {
-                "status": "success",
-                "message": "Successfully queried metrics",
-                "data": result,
-                "query_params": {"start_time": start_time, "end_time": end_time, "query": query, "step": step, "aggregation": aggregation},
-            }
-        else:
-            return {"status": "failed", "message": "Failed to query metrics"}
-    except Exception as e:
-        return {"status": "error", "message": f"Failed to query metrics: {e!s}"}
-
-
 def fetch_signoz_dashboard_data(dashboard_name, start_time=None, end_time=None, step=None, variables_json=None, duration=None):
     """Fetch all panel data for a given Signoz dashboard by name and time range.
-       Accepts start_time and end_time as RFC3339 or relative strings, or a duration string.
-       If start_time and end_time are not provided, defaults to last 3 hours."""
+    Accepts start_time and end_time as RFC3339 or relative strings, or a duration string.
+    If start_time and end_time are not provided, defaults to last 3 hours."""
     try:
         signoz_processor = current_app.config["signoz_processor"]
         result = signoz_processor.fetch_dashboard_data(
-            dashboard_name=dashboard_name,
-            start_time=start_time,
-            end_time=end_time,
-            step=step,
-            variables_json=variables_json,
-            duration=duration
+            dashboard_name=dashboard_name, start_time=start_time, end_time=end_time, step=step, variables_json=variables_json, duration=duration
         )
         if result.get("status") == "success":
             return {"status": "success", "message": f"Successfully fetched dashboard data for: {dashboard_name}", "data": result}
@@ -266,14 +261,26 @@ def fetch_signoz_apm_metrics(service_name, start_time=None, end_time=None, windo
         return {"status": "error", "message": f"Failed to fetch APM metrics: {e!s}"}
 
 
+def fetch_signoz_services(start_time=None, end_time=None, duration=None):
+    """Fetch all instrumented services from SigNoz"""
+    try:
+        signoz_processor = current_app.config["signoz_processor"]
+        result = signoz_processor.fetch_services(start_time, end_time, duration)
+        if result and (isinstance(result, dict) and result.get("status") == "error"):
+            return {"status": "failed", "message": result.get("message", "Failed to fetch services"), "details": result.get("details")}
+        return {"status": "success", "message": "Successfully fetched services", "data": result}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to fetch services: {e!s}"}
+
+
 # Function mapping
 FUNCTION_MAPPING = {
     "test_connection": test_signoz_connection,
     "fetch_dashboards": fetch_signoz_dashboards,
     "fetch_dashboard_details": fetch_signoz_dashboard_details,
-    "query_metrics": query_signoz_metrics,
     "fetch_dashboard_data": fetch_signoz_dashboard_data,
     "fetch_apm_metrics": fetch_signoz_apm_metrics,
+    "fetch_services": fetch_signoz_services,
 }
 
 
@@ -360,9 +367,7 @@ def health_check():
 
 def main():
     transport = os.environ.get("MCP_TRANSPORT", "http")
-    if (("-t" in sys.argv and "stdio" in sys.argv) or
-        ("--transport" in sys.argv and "stdio" in sys.argv) or
-        (transport == "stdio")):
+    if ("-t" in sys.argv and "stdio" in sys.argv) or ("--transport" in sys.argv and "stdio" in sys.argv) or (transport == "stdio"):
 
         def stdio_handler(data):
             with app.app_context():
@@ -372,7 +377,8 @@ def main():
     else:
         port = app.config["SERVER_CONFIG"].get("port", 8000)
         debug = app.config["SERVER_CONFIG"].get("debug", True)
-        app.run(host="0.0.0.0", port=port, debug=debug)  # noqa: S104
+        app.run(host="0.0.0.0", port=port, debug=debug)
+
 
 if __name__ == "__main__":
     main()
