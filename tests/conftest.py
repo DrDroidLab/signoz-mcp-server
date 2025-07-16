@@ -55,10 +55,8 @@ def openai_api_key():
                 config = yaml.safe_load(f)
         except yaml.YAMLError:
             pass  # Ignore malformed config
-
-    key = os.environ.get("OPENAI_API_KEY") or (
-        config.get("openai", {}).get("api_key") if config else None
-    )
+    print("config", config)
+    key = config.get("openai", {}).get("api_key") if config else None
     return key
 
 @pytest.fixture(scope="module")
@@ -76,21 +74,18 @@ def evaluator(openai_api_key):
 @pytest.fixture(scope="session", autouse=True)
 def setup_environment():
     """Setup environment for testing."""
-    # Ensure OpenAI API key is available
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    if not openai_key:
-        # Try to load from config
-        config_path = "src/signoz_mcp_server/config.yaml"
-        if os.path.exists(config_path):
-            try:
-                with open(config_path) as f:
-                    config = yaml.safe_load(f)
-                    openai_key = config.get("openai", {}).get("api_key")
-                    if openai_key:
-                        os.environ["OPENAI_API_KEY"] = openai_key
-            except yaml.YAMLError:
-                pass
-    
+
+    config_path = "src/signoz_mcp_server/config.yaml"
+    if os.path.exists(config_path):
+        try:
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+                openai_key = config.get("openai", {}).get("api_key")
+                if openai_key:
+                    os.environ["OPENAI_API_KEY"] = openai_key
+        except yaml.YAMLError:
+            pass
+
     yield
 
 # Custom pytest markers for pass rate functionality

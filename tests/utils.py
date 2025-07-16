@@ -79,7 +79,7 @@ class SignozResponseEvaluator:
         """Check if response contains APM metrics for a specific service."""
         evaluator = CustomLLMBooleanEvaluator(
             settings=CustomLLMBooleanSettings(
-                prompt=f"Does the response contain APM metrics for the '{service_name}' service, including metrics like 'Call Rate', 'Error Rate', '99th Percentile Duration (p99)', or '4XX Responses'?",
+                prompt=f"Does the response contain APM metrics for the '{service_name}' service, including metrics like 'Latency', 'Error Rate', 'Request Count', or 'Request Rate'?",
                 model=self.model,
             )
         )
