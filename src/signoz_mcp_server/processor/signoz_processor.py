@@ -213,6 +213,31 @@ class SignozApiProcessor(Processor):
             logger.error(f"Exception when fetching dashboard details: {e}")
             raise e
 
+    def _get_time_range(self, start_time=None, end_time=None, duration=None, default_hours=3):
+        """
+        Returns (start_dt, end_dt) as UTC datetimes.
+        - If start_time and end_time are provided, use those.
+        - Else if duration is provided, use (now - duration, now).
+        - Else, use (now - default_hours, now).
+        """
+        now_dt = datetime.now(timezone.utc)
+        if start_time and end_time:
+            start_dt = self._parse_time(start_time)
+            end_dt = self._parse_time(end_time)
+            if not start_dt or not end_dt:
+                start_dt = now_dt - timedelta(hours=default_hours)
+                end_dt = now_dt
+        elif duration:
+            dur_ms = self._parse_duration(duration)
+            if dur_ms is None:
+                dur_ms = default_hours * 60 * 60 * 1000
+            start_dt = now_dt - timedelta(milliseconds=dur_ms)
+            end_dt = now_dt
+        else:
+            start_dt = now_dt - timedelta(hours=default_hours)
+            end_dt = now_dt
+        return start_dt, end_dt
+
     def fetch_services(self, start_time=None, end_time=None, duration=None):
         """
         Fetches all instrumented services from SigNoz.
@@ -221,26 +246,8 @@ class SignozApiProcessor(Processor):
         If start_time and end_time are provided, uses those. Defaults to last 24 hours.
         Returns a list of services or error details.
         """
-        # Determine time range (default to last 24 hours)
-        now_dt = datetime.now(timezone.utc)
-        if start_time and end_time:
-            start_dt = self._parse_time(start_time)
-            end_dt = self._parse_time(end_time)
-            if not start_dt or not end_dt:
-                # fallback to default
-                start_dt = now_dt - timedelta(hours=24)
-                end_dt = now_dt
-        elif duration:
-            dur_ms = self._parse_duration(duration)
-            if dur_ms is None:
-                dur_ms = 24 * 60 * 60 * 1000  # fallback to 24h
-            start_dt = now_dt - timedelta(milliseconds=dur_ms)
-            end_dt = now_dt
-        else:
-            start_dt = now_dt - timedelta(hours=24)
-            end_dt = now_dt
-
-        # Convert to nanoseconds (SigNoz expects nanoseconds)
+        # Use standardized time range logic
+        start_dt, end_dt = self._get_time_range(start_time, end_time, duration, default_hours=24)
         start_ns = int(start_dt.timestamp() * 1_000_000_000)
         end_ns = int(end_dt.timestamp() * 1_000_000_000)
 
@@ -378,24 +385,8 @@ class SignozApiProcessor(Processor):
         If duration is provided, uses that as the window ending at now. If start_time and end_time are provided, uses those. Defaults to last 3 hours.
         Returns a dict with panel results.
         """
-        # Determine time range
-        now_dt = datetime.now(timezone.utc)
-        if start_time and end_time:
-            start_dt = self._parse_time(start_time)
-            end_dt = self._parse_time(end_time)
-            if not start_dt or not end_dt:
-                # fallback to default
-                start_dt = now_dt - timedelta(hours=3)
-                end_dt = now_dt
-        elif duration:
-            dur_ms = self._parse_duration(duration)
-            if dur_ms is None:
-                dur_ms = 3 * 60 * 60 * 1000  # fallback to 3h
-            start_dt = now_dt - timedelta(milliseconds=dur_ms)
-            end_dt = now_dt
-        else:
-            start_dt = now_dt - timedelta(hours=3)
-            end_dt = now_dt
+        # Use standardized time range logic
+        start_dt, end_dt = self._get_time_range(start_time, end_time, duration, default_hours=3)
         from_time = int(start_dt.timestamp() * 1000)
         to_time = int(end_dt.timestamp() * 1000)
         try:
@@ -473,24 +464,8 @@ class SignozApiProcessor(Processor):
         Accepts start_time and end_time as RFC3339 or relative strings (e.g., 'now-2h', 'now-30m'), or a duration string (e.g., '2h', '90m').
         If duration is provided, uses that as the window ending at now. If start_time and end_time are provided, uses those. Defaults to last 3 hours.
         """
-        # Determine time range
-        now_dt = datetime.now(timezone.utc)
-        if start_time and end_time:
-            start_dt = self._parse_time(start_time)
-            end_dt = self._parse_time(end_time)
-            if not start_dt or not end_dt:
-                # fallback to default
-                start_dt = now_dt - timedelta(hours=3)
-                end_dt = now_dt
-        elif duration:
-            dur_ms = self._parse_duration(duration)
-            if dur_ms is None:
-                dur_ms = 3 * 60 * 60 * 1000  # fallback to 3h
-            start_dt = now_dt - timedelta(milliseconds=dur_ms)
-            end_dt = now_dt
-        else:
-            start_dt = now_dt - timedelta(hours=3)
-            end_dt = now_dt
+        # Use standardized time range logic
+        start_dt, end_dt = self._get_time_range(start_time, end_time, duration, default_hours=3)
         from_time = int(start_dt.timestamp() * 1000)
         to_time = int(end_dt.timestamp() * 1000)
         step_val = self._parse_step(window)
