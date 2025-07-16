@@ -6,7 +6,7 @@ from tests.conftest import assert_response_quality
 pytestmark = pytest.mark.integration
 
 # Test data for parameterized testing
-test_models = ["gpt-4o-mini", "gpt-4o"]
+test_models = ["gpt-4.1"]
 service_queries = [
     "Fetch all services from SigNoz.",
     "Show me the available services.", 
