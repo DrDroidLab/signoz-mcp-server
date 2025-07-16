@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 from dateutil import parser as dateparser
 
-from signoz_mcp_server.processor.processor import Processor
+from src.signoz_mcp_server.processor.processor import Processor
 
 logger = logging.getLogger(__name__)
 

@@ -7,8 +7,8 @@ import sys
 import yaml
 from flask import Flask, current_app, jsonify, make_response, request
 
-from signoz_mcp_server.processor.signoz_processor import SignozApiProcessor
-from signoz_mcp_server.stdio_server import run_stdio_server
+from src.signoz_mcp_server.processor.signoz_processor import SignozApiProcessor
+from src.signoz_mcp_server.stdio_server import run_stdio_server
 
 app = Flask(__name__)
 logger = logging.getLogger(__name__)

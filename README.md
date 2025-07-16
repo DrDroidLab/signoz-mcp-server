@@ -1,6 +1,18 @@
 # Signoz MCP Server
 
-## 🚀 Usage
+Watch Working Demo on Cursor 📽️ https://youtube.com/shorts/jxjmGyXXz7A
+
+## Available Tools
+The following tools are available via the MCP server:
+
+- **test_connection**: Verify connectivity to your Signoz instance and configuration.
+- **fetch_dashboards**: List all available dashboards from Signoz.
+- **fetch_dashboard_details**: Retrieve detailed information about a specific dashboard by its ID. This information contains the metadata of the dashboard, not the live panel data.
+- **fetch_dashboard_data**: Fetch all panel data for a given dashboard by name and time range.
+- **fetch_apm_metrics**: Retrieve standard APM metrics (request rate, error rate, latency, apdex, etc.) for a given service and time range.
+
+
+## 🚀 Usage & Requirements
 
 ### 1. Get Your Signoz API Endpoint & (Optional) API Key
 
@@ -11,24 +23,25 @@
 
 ## 2. Installation & Running Options
 
-### A. Install & Run with uv (Recommended for Local Development)
+### 2A. Install & Run with uv (Recommended for Local Development)
 
-#### 1. Install dependencies with uv
+#### 2A.1. Install dependencies with uv
 ```bash
+uv venv .venv
+source .venv/bin/activate
 uv sync
 ```
 
-#### 2. Run the server with uv
+#### 2A.2. Run the server with uv
 ```bash
-cd src
-uv run -m signoz_mcp_server.mcp_server
+uv run -m src.signoz_mcp_server.mcp_server
 ```
 - You can also use `uv` to run any other entrypoint scripts as needed.
 - Make sure your `config.yaml` is in the same directory as `mcp_server.py` or set the required environment variables (see Configuration section).
 
 ---
 
-### B. Run with Docker Compose (Recommended for Production/Containerized Environments)
+### 2B. Run with Docker Compose (Recommended for Production/Containerized Environments)
 
 1. Edit `src/signoz_mcp_server/config.yaml` with your Signoz details (host, API key if needed).
 2. Start the server:
@@ -40,7 +53,7 @@ uv run -m signoz_mcp_server.mcp_server
 
 ---
 
-### C. Run with Docker Image (Manual)
+### 2C. Run with Docker Image (Manual)
 
 1. Build the image:
    ```bash
@@ -69,7 +82,7 @@ uv run -m signoz_mcp_server.mcp_server
 
 ---
 
-## Configuration
+## 3. Configuration
 
 The server loads configuration in the following order of precedence:
 
@@ -92,11 +105,11 @@ The server loads configuration in the following order of precedence:
 
 ---
 
-## Integration with AI Assistants (e.g., Claude Desktop, Cursor)
+## 4. Integration with AI Assistants (e.g., Claude Desktop, Cursor)
 
 You can integrate this MCP server with any tool that supports the MCP protocol. Here are the main options:
 
-### A. Using Local Setup (with uv)
+### 4A. Using Local Setup (with uv)
 Before running the server locally, install dependencies and run with uv:
 
 ```bash
@@ -121,7 +134,7 @@ Then add to your client configuration (e.g., `claude-desktop.json`):
 ```
 - Ensure your `config.yaml` is in the same directory as `mcp_server.py` or update the path accordingly.
 
-### B. Using Docker Compose or Docker (with environment variables, mcp-grafana style)
+### 4B. Using Docker Compose or Docker (with environment variables, mcp-grafana style)
 ```json
 {
   "mcpServers": {
@@ -149,7 +162,7 @@ Then add to your client configuration (e.g., `claude-desktop.json`):
 - The `-t stdio` argument is supported for compatibility with Docker MCP clients (forces stdio handshake mode).
 - Adjust the volume path or environment variables as needed for your deployment.
 
-### C. Connecting to an Already Running MCP Server (HTTP/SSE)
+### 4C. Connecting to an Already Running MCP Server (HTTP/SSE)
 If you have an MCP server already running (e.g., on a remote host, cloud VM, or Kubernetes), you can connect your AI assistant or tool directly to its HTTP endpoint.
 
 #### Example: Claude Desktop or Similar Tool
@@ -181,16 +194,6 @@ mcp:
 - The server must be running in HTTP (SSE) mode (the default for this implementation).
 
 ---
-
-## Available Tools
-The following tools are available via the MCP server:
-
-- **test_connection**: Verify connectivity to your Signoz instance and configuration.
-- **fetch_dashboards**: List all available dashboards from Signoz.
-- **fetch_dashboard_details**: Retrieve detailed information about a specific dashboard by its ID. This information contains the metadata of the dashboard, not the live panel data.
-- **fetch_dashboard_data**: Fetch all panel data for a given dashboard by name and time range.
-- **fetch_apm_metrics**: Retrieve standard APM metrics (request rate, error rate, latency, apdex, etc.) for a given service and time range.
-
 ## Health Check
 ```bash
 curl http://localhost:8000/health
@@ -199,4 +202,6 @@ The server runs on port 8000 by default.
 
 ---
 
-For more advanced integrations, refer to the [MCP protocol documentation](https://github.com/modelcontext/protocol) or your tool's documentation for MCP support. 
+## 5. Miscellaneous:
+1. Need help anywhere? Join our [slack community](https://join.slack.com/t/doctor-droid-demo/shared_invite/zt-2h6eap61w-Bmz76OEU6IykmDy673R1qQ) and message on #mcp channel.
+2. Want a 1-click MCP Server? Join the same comunity and let us know.
