@@ -42,3 +42,6 @@ exclude = [
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "src/signoz_mcp_server"]

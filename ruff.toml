@@ -33,6 +33,7 @@ exclude = [
     "migrations",
     "*env/",
     "protos/*",
+    "tests/"
 ]
 
 # Allow unused variables when underscore-prefixed
@@ -47,6 +48,7 @@ unfixable = []
 [lint.per-file-ignores]
 "__init__.py" = ["F401", "F403"]  # Ignore unused imports in __init__ files
 "tests/**/*.py" = ["B", "C4", "E501", "F811"]  # Looser rules for test files
+"**/*_server.py" = ["S104"]
 
 
 [format]
