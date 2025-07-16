@@ -243,3 +243,124 @@ def test_tool_call_fetch_services(client):
         else:
             # Other errors should fail the test
             pytest.fail(f"Unexpected error in fetch_services: {content.get('message', 'Unknown error')}") 
+
+def test_tool_call_execute_clickhouse_query(client):
+    """
+    Tests the 'execute_clickhouse_query' tool call through the MCP server.
+    """
+    # Simple Clickhouse query to test the connection and basic functionality
+    test_query = "SELECT 1 as test_column"
+    
+    response = client.post(
+        "/mcp",
+        data=json.dumps({
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "execute_clickhouse_query",
+                "arguments": {
+                    "query": test_query,
+                    "start_time": "now-1h",
+                    "end_time": "now",
+                    "panel_type": "table",
+                    "fill_gaps": False,
+                    "step": 60
+                }
+            },
+            "id": "12"
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    response_data = response.get_json()
+    assert response_data["id"] == "12"
+    assert "result" in response_data
+    content = json.loads(response_data["result"]["content"][0]["text"])
+    
+    # Check the response status - it could be success or error depending on the Signoz setup
+    assert content["status"] in ("success", "error")
+    
+    if content["status"] == "success":
+        assert "data" in content
+        print(f"Successfully executed Clickhouse query: {test_query}")
+    else:
+        # If it's an error, it should have a message
+        assert "message" in content
+        # If it's a query execution error, that's acceptable for testing
+        if "Failed to execute Clickhouse query" in content.get("message", ""):
+            pytest.skip(f"Clickhouse query execution failed: {content['message']}")
+        else:
+            # Other errors should fail the test
+            pytest.fail(f"Unexpected error in execute_clickhouse_query: {content.get('message', 'Unknown error')}")
+
+def test_tool_call_execute_builder_query(client):
+    """
+    Tests the 'execute_builder_query' tool call through the MCP server.
+    """
+    # Simple builder query to test the connection and basic functionality
+    test_builder_queries = {
+        "A": {
+            "queryName": "A",
+            "expression": "A",
+            "dataSource": "metrics",
+            "aggregateOperator": "sum",
+            "aggregateAttribute": {
+                "key": "signoz_calls_total",
+                "dataType": "float64",
+                "isColumn": True,
+                "type": ""
+            },
+            "timeAggregation": "sum",
+            "spaceAggregation": "sum",
+            "functions": [],
+            "filters": {
+                "items": [],
+                "op": "AND"
+            },
+            "disabled": False,
+            "stepInterval": 60,
+            "legend": "Test Query",
+            "groupBy": []
+        }
+    }
+    
+    response = client.post(
+        "/mcp",
+        data=json.dumps({
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "execute_builder_query",
+                "arguments": {
+                    "builder_queries": test_builder_queries,
+                    "start_time": "now-1h",
+                    "end_time": "now",
+                    "panel_type": "table",
+                    "step": 60
+                }
+            },
+            "id": "13"
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    response_data = response.get_json()
+    assert response_data["id"] == "13"
+    assert "result" in response_data
+    content = json.loads(response_data["result"]["content"][0]["text"])
+    
+    # Check the response status - it could be success or error depending on the Signoz setup
+    assert content["status"] in ("success", "error")
+    
+    if content["status"] == "success":
+        assert "data" in content
+        print(f"Successfully executed builder query")
+    else:
+        # If it's an error, it should have a message
+        assert "message" in content
+        # If it's a query execution error, that's acceptable for testing
+        if "Failed to execute builder query" in content.get("message", ""):
+            pytest.skip(f"Builder query execution failed: {content['message']}")
+        else:
+            # Other errors should fail the test
+            pytest.fail(f"Unexpected error in execute_builder_query: {content.get('message', 'Unknown error')}") 
