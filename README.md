@@ -188,7 +188,6 @@ The following tools are available via the MCP server:
 - **test_connection**: Verify connectivity to your Signoz instance and configuration.
 - **fetch_dashboards**: List all available dashboards from Signoz.
 - **fetch_dashboard_details**: Retrieve detailed information about a specific dashboard by its ID. This information contains the metadata of the dashboard, not the live panel data.
-- **query_metrics**: Query metrics from Signoz with a specified time range and query parameters.
 - **fetch_dashboard_data**: Fetch all panel data for a given dashboard by name and time range.
 - **fetch_apm_metrics**: Retrieve standard APM metrics (request rate, error rate, latency, apdex, etc.) for a given service and time range.
 

@@ -97,41 +97,6 @@ def test_tool_call_fetch_dashboard_details(client):
     assert content["status"] == "success"
     assert content["data"]["id"] == dashboard_id
 
-def test_tool_call_query_metrics(client):
-    """
-    Tests the 'query_metrics' tool call through the MCP server.
-    """
-    end_time = int(time.time())
-    start_time = end_time - 3600 # 1 hour ago
-
-    # This query will be hardcoded by the user.
-    query = "sum(rate(recommendation_request_count[5m]))"
-
-    response = client.post(
-        "/mcp",
-        data=json.dumps({
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "query_metrics",
-                "arguments": {
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "query": query
-                }
-            },
-            "id": "5"
-        }),
-        content_type="application/json"
-    )
-    print(response.text)
-    assert response.status_code == 200
-    response_data = response.get_json()
-    assert response_data["id"] == "5"
-    content = json.loads(response_data["result"]["content"][0]["text"])
-    assert content["status"] == "success"
-    assert "data" in content
-
 def test_tool_call_fetch_dashboard_data(client):
     """
     Tests the 'fetch_dashboard_data' tool call through the MCP server.

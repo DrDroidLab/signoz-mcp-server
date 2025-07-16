@@ -326,25 +326,6 @@ class SignozApiProcessor(Processor):
             logger.error(f"Exception when posting to query_range: {e}")
             raise e
 
-    def query_metrics(self, start_time, end_time, query, step=None):
-        try:
-            from_time = int(start_time * 1000) if start_time < 1e12 else int(start_time)
-            to_time = int(end_time * 1000) if end_time < 1e12 else int(end_time)
-            step_val = self._parse_step(step) if step else 60
-            if not query or not isinstance(query, str) or not query.strip():
-                return {"error": "Query string is required and must be non-empty."}
-            payload = {
-                "start": from_time,
-                "end": to_time,
-                "step": step_val,
-                "formatForWeb": False,
-                "compositeQuery": {"queryType": "promql", "promqlQuery": {"query": query}},
-            }
-            return self._post_query_range(payload)
-        except Exception as e:
-            logger.error(f"Exception when querying metrics: {e}")
-            raise e
-
     def fetch_dashboard_data(self, dashboard_name, start_time=None, end_time=None, step=None, variables_json=None, duration=None):
         """
         Fetches dashboard data for all panels in a specified Signoz dashboard by name.

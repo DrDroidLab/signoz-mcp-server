@@ -92,21 +92,6 @@ TOOLS_LIST = [
         },
     },
     {
-        "name": "query_metrics",
-        "description": "Query metrics from Signoz with specified time range and query parameters.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "start_time": {"type": "number", "description": "Start time in Unix timestamp (seconds or milliseconds)"},
-                "end_time": {"type": "number", "description": "End time in Unix timestamp (seconds or milliseconds)"},
-                "query": {"type": "string", "description": "The metrics query to execute"},
-                "step": {"type": "string", "description": "Optional step interval for the query (e.g., '1m', '5m', '1h')"},
-                "aggregation": {"type": "string", "description": "Optional aggregation function (e.g., 'avg', 'sum', 'min', 'max')"},
-            },
-            "required": ["start_time", "end_time", "query"],
-        },
-    },
-    {
         "name": "fetch_dashboard_data",
         "description": f"Fetch all panel data for a given Signoz dashboard by name and time range. Current datetime is {get_current_time_iso()}",
         "inputSchema": {
@@ -208,24 +193,6 @@ def fetch_signoz_dashboard_details(dashboard_id):
         return {"status": "error", "message": f"Failed to fetch dashboard details: {e!s}"}
 
 
-# Query metrics function
-def query_signoz_metrics(start_time, end_time, query, step=None, aggregation=None):
-    """Query metrics from Signoz with specified parameters"""
-    try:
-        signoz_processor = current_app.config["signoz_processor"]
-        result = signoz_processor.query_metrics(start_time, end_time, query, step, aggregation)
-        if result:
-            return {
-                "status": "success",
-                "message": "Successfully queried metrics",
-                "data": result,
-                "query_params": {"start_time": start_time, "end_time": end_time, "query": query, "step": step, "aggregation": aggregation},
-            }
-        else:
-            return {"status": "failed", "message": "Failed to query metrics"}
-    except Exception as e:
-        return {"status": "error", "message": f"Failed to query metrics: {e!s}"}
-
 
 def fetch_signoz_dashboard_data(dashboard_name, start_time=None, end_time=None, step=None, variables_json=None, duration=None):
     """Fetch all panel data for a given Signoz dashboard by name and time range.
@@ -271,7 +238,6 @@ FUNCTION_MAPPING = {
     "test_connection": test_signoz_connection,
     "fetch_dashboards": fetch_signoz_dashboards,
     "fetch_dashboard_details": fetch_signoz_dashboard_details,
-    "query_metrics": query_signoz_metrics,
     "fetch_dashboard_data": fetch_signoz_dashboard_data,
     "fetch_apm_metrics": fetch_signoz_apm_metrics,
 }
