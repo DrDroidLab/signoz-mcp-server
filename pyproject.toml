@@ -11,7 +11,7 @@ name = "signoz-mcp-server"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 dependencies = [
     "Flask==3.0.0",
@@ -22,6 +22,9 @@ dependencies = [
     "requests>=2.31.0",
     "ruff>=0.12.3",
     "typing-extensions",
+    "flaky",
+    "pandas",
+    "langevals[langevals,openai]",
 ]
 
 [project.scripts]
