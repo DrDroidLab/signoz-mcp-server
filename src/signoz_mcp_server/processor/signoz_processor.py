@@ -255,7 +255,6 @@ class SignozApiProcessor(Processor):
             url = f"{self.__host}/api/v1/services"
             payload = {"start": str(start_ns), "end": str(end_ns), "tags": []}
             response = requests.post(url, headers=self.headers, json=payload, verify=self.__ssl_verify, timeout=30)
-            print(f"Services API response: {response.text}")
             if response.status_code == 200:
                 return response.json()
             else:
