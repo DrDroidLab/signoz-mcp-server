@@ -206,13 +206,37 @@ TOOLS_LIST = [
     },
     {
         "name": "execute_builder_query",
-        "description": "Execute a Signoz builder query via the Signoz API. The 'builder_queries' parameter must be a dictionary with keys like 'A', 'B', etc., each mapping to a full builder query object as expected by the SigNoz API. Example: {\"A\": {\"queryName\": \"A\", \"expression\": \"A\", \"dataSource\": \"metrics\", \"aggregateOperator\": \"rate\", \"aggregateAttribute\": {\"key\": \"signoz_calls_total\", \"dataType\": \"float64\", \"isColumn\": true, \"type\": \"\"}, \"timeAggregation\": \"rate\", \"spaceAggregation\": \"sum\", \"functions\": [], \"filters\": {\"items\": [], \"op\": \"AND\"}, \"disabled\": false, \"stepInterval\": 60, \"legend\": \"Calls Rate\", \"groupBy\": [\"service.name\"] }}. Each builder query object should include all required fields for a SigNoz builder query.",
+        "description": (
+            "Execute a Signoz builder query via the Signoz API. The 'builder_queries' parameter must be a dictionary with keys like 'A', 'B', etc., "
+            "each mapping to a full builder query object as expected by the SigNoz API. "
+            'Example: {"A": {"queryName": "A", "expression": "A", "dataSource": "metrics", '
+            '"aggregateOperator": "rate", "aggregateAttribute": {"key": "signoz_calls_total", '
+            '"dataType": "float64", "isColumn": true, "type": ""}, "timeAggregation": "rate", '
+            '"spaceAggregation": "sum", "functions": [], "filters": {"items": [], "op": "AND"}, '
+            '"disabled": false, "stepInterval": 60, "legend": "Calls Rate", "groupBy": [{"key": '
+            '"service.name", "dataType": "string", "isColumn": false, "type": "resource"}] }}. '
+            "Each builder query object should include all required fields for a SigNoz builder query."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "builder_queries": {
                     "type": "object",
-                    "description": "Dictionary of builder queries. Each key (e.g., 'A', 'B') must map to a full builder query object. Each builder query object should include: queryName, expression, dataSource, aggregateOperator, aggregateAttribute, timeAggregation, spaceAggregation, functions, filters, disabled, stepInterval, legend, groupBy, etc. IMPORTANT: groupBy must be an array of AttributeKey objects, not strings. Example for groupBy: [{\"key\": \"service.name\", \"dataType\": \"string\", \"isColumn\": false, \"type\": \"resource\"}]. Example builder_queries: {\"A\": {\"queryName\": \"A\", \"expression\": \"A\", \"dataSource\": \"metrics\", \"aggregateOperator\": \"rate\", \"aggregateAttribute\": {\"key\": \"signoz_calls_total\", \"dataType\": \"float64\", \"isColumn\": true, \"type\": \"\"}, \"timeAggregation\": \"rate\", \"spaceAggregation\": \"sum\", \"functions\": [], \"filters\": {\"items\": [], \"op\": \"AND\"}, \"disabled\": false, \"stepInterval\": 60, \"legend\": \"Calls Rate\", \"groupBy\": [{\"key\": \"service.name\", \"dataType\": \"string\", \"isColumn\": false, \"type\": \"resource\"}] }}"
+                    "description": (
+                        "Dictionary of builder queries. Each key (e.g., 'A', 'B') must map to a full builder query object. "
+                        "Each builder query object should include: queryName, expression, dataSource, aggregateOperator, "
+                        "aggregateAttribute, timeAggregation, spaceAggregation, functions, filters, disabled, stepInterval, "
+                        "legend, groupBy, etc. IMPORTANT: groupBy must be an array of AttributeKey objects, not strings. "
+                        'Example for groupBy: [{"key": "service.name", "dataType": "string", '
+                        '"isColumn": false, "type": "resource"}]. '
+                        'Example builder_queries: {"A": {"queryName": "A", "expression": "A", '
+                        '"dataSource": "metrics", "aggregateOperator": "rate", "aggregateAttribute": '
+                        '{"key": "signoz_calls_total", "dataType": "float64", "isColumn": true, '
+                        '"type": ""}, "timeAggregation": "rate", "spaceAggregation": "sum", '
+                        '"functions": [], "filters": {"items": [], "op": "AND"}, "disabled": false, '
+                        '"stepInterval": 60, "legend": "Calls Rate", "groupBy": [{"key": "service.name", '
+                        '"dataType": "string", "isColumn": false, "type": "resource"}] }}'
+                    ),
                 },
                 "start_time": {
                     "type": "string",
@@ -349,6 +373,7 @@ def execute_signoz_clickhouse_query(query, start_time=None, end_time=None, durat
     except Exception as e:
         return {"status": "error", "message": f"Failed to execute Clickhouse query: {e!s}"}
 
+
 def execute_signoz_builder_query(builder_queries, start_time=None, end_time=None, duration=None, panel_type="table", step=60):
     """Execute a Signoz builder query via the Signoz API."""
     try:
@@ -367,6 +392,7 @@ def execute_signoz_builder_query(builder_queries, start_time=None, end_time=None
         return {"status": "success", "message": "Successfully executed builder query", "data": result}
     except Exception as e:
         return {"status": "error", "message": f"Failed to execute builder query: {e!s}"}
+
 
 # Function mapping
 FUNCTION_MAPPING = {
