@@ -184,28 +184,53 @@ TOOLS_LIST = [
             "type": "object",
             "properties": {
                 "query": {"type": "string", "description": "The Clickhouse SQL query to execute."},
-                "time_geq": {"type": "number", "description": "Start time (UNIX timestamp, seconds)."},
-                "time_lt": {"type": "number", "description": "End time (UNIX timestamp, seconds)."},
+                "start_time": {
+                    "type": "string",
+                    "description": (
+                        "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "end_time": {
+                    "type": "string",
+                    "description": (
+                        "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "duration": {"type": "string", "description": "Duration string for the time window (e.g., '2h', '90m')"},
                 "panel_type": {"type": "string", "description": "Panel type (e.g., 'table', 'graph').", "default": "table"},
                 "fill_gaps": {"type": "boolean", "description": "Whether to fill gaps in the data.", "default": False},
                 "step": {"type": "number", "description": "Step interval in seconds.", "default": 60},
             },
-            "required": ["query", "time_geq", "time_lt"],
+            "required": ["query"],
         },
     },
     {
         "name": "execute_builder_query",
-        "description": "Execute a Signoz builder query via the Signoz API.",
+        "description": "Execute a Signoz builder query via the Signoz API. The 'builder_queries' parameter must be a dictionary with keys like 'A', 'B', etc., each mapping to a full builder query object as expected by the SigNoz API. Example: {\"A\": {\"queryName\": \"A\", \"expression\": \"A\", \"dataSource\": \"metrics\", \"aggregateOperator\": \"rate\", \"aggregateAttribute\": {\"key\": \"signoz_calls_total\", \"dataType\": \"float64\", \"isColumn\": true, \"type\": \"\"}, \"timeAggregation\": \"rate\", \"spaceAggregation\": \"sum\", \"functions\": [], \"filters\": {\"items\": [], \"op\": \"AND\"}, \"disabled\": false, \"stepInterval\": 60, \"legend\": \"Calls Rate\", \"groupBy\": [\"service.name\"] }}. Each builder query object should include all required fields for a SigNoz builder query.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "builder_queries": {"type": "object", "description": "Builder queries as a JSON object."},
-                "time_geq": {"type": "number", "description": "Start time (UNIX timestamp, seconds)."},
-                "time_lt": {"type": "number", "description": "End time (UNIX timestamp, seconds)."},
+                "builder_queries": {
+                    "type": "object",
+                    "description": "Dictionary of builder queries. Each key (e.g., 'A', 'B') must map to a full builder query object. Each builder query object should include: queryName, expression, dataSource, aggregateOperator, aggregateAttribute, timeAggregation, spaceAggregation, functions, filters, disabled, stepInterval, legend, groupBy, etc. IMPORTANT: groupBy must be an array of AttributeKey objects, not strings. Example for groupBy: [{\"key\": \"service.name\", \"dataType\": \"string\", \"isColumn\": false, \"type\": \"resource\"}]. Example builder_queries: {\"A\": {\"queryName\": \"A\", \"expression\": \"A\", \"dataSource\": \"metrics\", \"aggregateOperator\": \"rate\", \"aggregateAttribute\": {\"key\": \"signoz_calls_total\", \"dataType\": \"float64\", \"isColumn\": true, \"type\": \"\"}, \"timeAggregation\": \"rate\", \"spaceAggregation\": \"sum\", \"functions\": [], \"filters\": {\"items\": [], \"op\": \"AND\"}, \"disabled\": false, \"stepInterval\": 60, \"legend\": \"Calls Rate\", \"groupBy\": [{\"key\": \"service.name\", \"dataType\": \"string\", \"isColumn\": false, \"type\": \"resource\"}] }}"
+                },
+                "start_time": {
+                    "type": "string",
+                    "description": (
+                        "Start time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "end_time": {
+                    "type": "string",
+                    "description": (
+                        "End time in RFC3339 or relative string (e.g., 'now-2h', '2023-01-01T00:00:00Z') or duration string (e.g., '2h', '90m')"
+                    ),
+                },
+                "duration": {"type": "string", "description": "Duration string for the time window (e.g., '2h', '90m')"},
                 "panel_type": {"type": "string", "description": "Panel type (e.g., 'table', 'graph').", "default": "table"},
                 "step": {"type": "number", "description": "Step interval in seconds.", "default": 60},
             },
-            "required": ["builder_queries", "time_geq", "time_lt"],
+            "required": ["builder_queries"],
         },
     },
 ]
@@ -304,10 +329,14 @@ def fetch_signoz_services(start_time=None, end_time=None, duration=None):
         return {"status": "error", "message": f"Failed to fetch services: {e!s}"}
 
 
-def execute_signoz_clickhouse_query(query, time_geq, time_lt, panel_type="table", fill_gaps=False, step=60):
+def execute_signoz_clickhouse_query(query, start_time=None, end_time=None, duration=None, panel_type="table", fill_gaps=False, step=60):
     """Execute a Clickhouse SQL query via the Signoz API."""
     try:
         signoz_processor = current_app.config["signoz_processor"]
+        # Use the same time range logic as other tools
+        start_dt, end_dt = signoz_processor._get_time_range(start_time, end_time, duration, default_hours=3)
+        time_geq = start_dt.timestamp()
+        time_lt = end_dt.timestamp()
         result = signoz_processor.execute_clickhouse_query_tool(
             query=query,
             time_geq=time_geq,
@@ -320,10 +349,14 @@ def execute_signoz_clickhouse_query(query, time_geq, time_lt, panel_type="table"
     except Exception as e:
         return {"status": "error", "message": f"Failed to execute Clickhouse query: {e!s}"}
 
-def execute_signoz_builder_query(builder_queries, time_geq, time_lt, panel_type="table", step=60):
+def execute_signoz_builder_query(builder_queries, start_time=None, end_time=None, duration=None, panel_type="table", step=60):
     """Execute a Signoz builder query via the Signoz API."""
     try:
         signoz_processor = current_app.config["signoz_processor"]
+        # Use the same time range logic as other tools
+        start_dt, end_dt = signoz_processor._get_time_range(start_time, end_time, duration, default_hours=3)
+        time_geq = start_dt.timestamp()
+        time_lt = end_dt.timestamp()
         result = signoz_processor.execute_builder_query_tool(
             builder_queries=builder_queries,
             time_geq=time_geq,
