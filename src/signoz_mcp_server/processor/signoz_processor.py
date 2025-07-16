@@ -525,3 +525,65 @@ class SignozApiProcessor(Processor):
             "compositeQuery": {"queryType": "builder", "panelType": "graph", "builderQueries": builder_queries},
         }
         return self._post_query_range(payload)
+
+    def execute_clickhouse_query_tool(
+        self,
+        query,
+        time_geq,
+        time_lt,
+        panel_type="table",
+        fill_gaps=False,
+        step=60,
+    ):
+        """
+        Tool: Execute a Clickhouse SQL query via the Signoz API.
+        """
+        from_time = int(time_geq * 1000)
+        to_time = int(time_lt * 1000)
+        payload = {
+            "start": from_time,
+            "end": to_time,
+            "step": step,
+            "variables": {},
+            "formatForWeb": True,
+            "compositeQuery": {
+                "queryType": "clickhouse_sql",
+                "panelType": panel_type,
+                "fillGaps": fill_gaps,
+                "chQueries": {
+                    "A": {
+                        "name": "A",
+                        "legend": "",
+                        "disabled": False,
+                        "query": query,
+                    }
+                },
+            },
+        }
+        return self._post_query_range(payload)
+
+    def execute_builder_query_tool(
+        self,
+        builder_queries,
+        time_geq,
+        time_lt,
+        panel_type="table",
+        step=60,
+    ):
+        """
+        Tool: Execute a Signoz builder query via the Signoz API.
+        """
+        from_time = int(time_geq * 1000)
+        to_time = int(time_lt * 1000)
+        payload = {
+            "start": from_time,
+            "end": to_time,
+            "step": step,
+            "variables": {},
+            "compositeQuery": {
+                "queryType": "builder",
+                "panelType": panel_type,
+                "builderQueries": builder_queries,
+            },
+        }
+        return self._post_query_range(payload)

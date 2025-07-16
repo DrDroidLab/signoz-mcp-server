@@ -4,10 +4,10 @@
 signoz:
   # Your Signoz instance URL (include http/https)
   host: <host>
-  
+
   # Signoz API key if required (optional)
   api_key: <api_key>
-  
+
   # SSL verification (true/false)
   # Set to false only if using self-signed certificates
   ssl_verify: <ssl_verify>
