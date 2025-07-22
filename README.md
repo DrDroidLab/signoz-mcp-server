@@ -161,7 +161,7 @@ Then add to your client configuration (e.g., `claude-desktop.json`):
         "SIGNOZ_API_KEY",
         "-e",
         "SIGNOZ_SSL_VERIFY",
-        "dipeshmittal14/signoz-mcp-server",
+        "ddroid/signoz-mcp-server",
         "-t",
         "stdio"
       ],
