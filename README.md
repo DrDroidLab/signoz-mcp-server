@@ -60,35 +60,6 @@ uv run -m src.signoz_mcp_server.mcp_server
 
 ---
 
-### 2C. Run with Docker Image (Manual)
-
-1. Build the image:
-   ```bash
-   docker build -t signoz-mcp-server .
-   ```
-2. Run the container (YAML config fallback):
-   ```bash
-   docker run -d \
-     -p 8000:8000 \
-     -v $(pwd)/src/signoz_mcp_server/config.yaml:/app/config.yaml:ro \
-     --name signoz-mcp-server \
-     signoz-mcp-server
-   ```
-3. **Or run with environment variables (recommended for CI/Docker MCP clients):**
-   ```bash
-   docker run -d \
-     -p 8000:8000 \
-     -e SIGNOZ_HOST="https://your-signoz-instance.com" \
-     -e SIGNOZ_API_KEY="your-signoz-api-key-here" \
-     -e SIGNOZ_SSL_VERIFY="true" \
-     -e MCP_SERVER_PORT=8000 \
-     -e MCP_SERVER_DEBUG=true \
-     --name signoz-mcp-server \
-     signoz-mcp-server
-   ```
-
----
-
 ## 3. Configuration
 
 The server loads configuration in the following order of precedence:
@@ -130,9 +101,15 @@ Then add to your client configuration (e.g., `claude-desktop.json`):
 {
   "mcpServers": {
     "signoz": {
-      "command": "uv",
-      "args": ["run", "/full/path/to/src/signoz_mcp_server/mcp_server.py"],
+      "command": "/path/to/uv",
+      "args": [
+        "--directory",
+        "/full/path/to/signoz-mcp-server",
+        "run",
+        "src/signoz_mcp_server/mcp_server.py"
+      ],
       "env": {
+        "MCP_TRANSPORT": "stdio",
         "SIGNOZ_HOST": "https://your-signoz-instance.com",
         "SIGNOZ_API_KEY": "your-signoz-api-key-here",
         "SIGNOZ_SSL_VERIFY": "true"
@@ -142,6 +119,7 @@ Then add to your client configuration (e.g., `claude-desktop.json`):
 }
 ```
 
+- The path to uv can be found by running `which uv` on MacOS/Linux or `where uv` on Windows.
 - Ensure your `config.yaml` is in the same directory as `mcp_server.py` or update the path accordingly.
 
 ### 4B. Using Docker Compose or Docker (with environment variables, mcp-grafana style)
