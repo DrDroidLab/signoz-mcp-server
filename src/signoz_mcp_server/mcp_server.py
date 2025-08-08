@@ -265,9 +265,11 @@ TOOLS_LIST = [
     {
         "name": "fetch_traces_or_logs",
         "description": (
-            "Fetch traces or logs from SigNoz using ClickHouse SQL. "
-            "Specify data_type ('traces' or 'logs'). "
-            "Supports time range, service_name, and limit."
+            "Fetch traces or logs from SigNoz using ClickHouse SQL with automatic schema detection. "
+            "Auto-detects and uses logs_v2 schema (distributed_logs_v2) when available, falls back to v1 (distributed_logs) for compatibility. "
+            "V2 logs return: timestamp, observed_timestamp, id, body, severity_text, attributes_string, resources_string, trace_id, span_id. "
+            "V1 logs return: timestamp, body, severity_text, resource_attributes, trace_id, span_id. "
+            "Specify data_type ('traces' or 'logs'). Supports time range, service_name, and limit."
         ),
         "inputSchema": {
             "type": "object",
@@ -278,6 +280,7 @@ TOOLS_LIST = [
                 "duration": {"type": "string", "description": "Duration string (e.g., '2h', '90m')"},
                 "service_name": {"type": "string", "description": "Filter by service name (optional)"},
                 "limit": {"type": "number", "description": "Max number of records to return (default 100)"},
+                "logs_version": {"type": "string", "description": "Force logs schema version: 'auto' (default), 'v1', or 'v2'", "default": "auto"},
             },
             "required": ["data_type"],
         },
@@ -419,8 +422,8 @@ def execute_signoz_builder_query(builder_queries, start_time=None, end_time=None
         return {"status": "error", "message": f"Failed to execute builder query: {e!s}"}
 
 
-def fetch_signoz_traces_or_logs(data_type, start_time=None, end_time=None, duration=None, service_name=None, limit=100):
-    """Fetch traces or logs from SigNoz using ClickHouse SQL."""
+def fetch_signoz_traces_or_logs(data_type, start_time=None, end_time=None, duration=None, service_name=None, limit=100, logs_version="auto"):
+    """Fetch traces or logs from SigNoz using ClickHouse SQL with backward compatibility."""
     try:
         signoz_processor = current_app.config["signoz_processor"]
         # Use the same time range logic as other tools
@@ -428,20 +431,55 @@ def fetch_signoz_traces_or_logs(data_type, start_time=None, end_time=None, durat
         time_geq = int(start_dt.timestamp())
         time_lt = int(end_dt.timestamp())
         limit = int(limit) if limit else 100
+        
         if data_type == "traces":
             table = "signoz_traces.distributed_signoz_index_v3"
             select_cols = "traceID, serviceName, name, durationNano, statusCode, timestamp"
             where_clauses = [f"timestamp >= toDateTime64({int(start_dt.timestamp())}, 9)", f"timestamp < toDateTime64({int(end_dt.timestamp())}, 9)"]
             if service_name:
                 where_clauses.append(f"serviceName = '{service_name}'")
+                
         elif data_type == "logs":
-            table = "signoz_logs.distributed_logs"
-            select_cols = "timestamp, body, severity_text, resource_attributes, trace_id, span_id"
-            where_clauses = [f"timestamp >= toDateTime64({int(start_dt.timestamp())}, 9)", f"timestamp < toDateTime64({int(end_dt.timestamp())}, 9)"]
-            if service_name:
-                where_clauses.append(f"JSONExtractString(resource_attributes, 'service.name') = '{service_name}'")
+            # Auto-detect version or use specified version
+            if logs_version == "auto":
+                # Try v2 first, fallback to v1
+                try:
+                    # Test if v2 table exists with a simple query
+                    test_query = "SELECT 1 FROM signoz_logs.distributed_logs_v2 LIMIT 1"
+                    signoz_processor.execute_clickhouse_query_tool(
+                        query=test_query,
+                        time_geq=time_geq,
+                        time_lt=time_lt,
+                        panel_type="table",
+                        fill_gaps=False,
+                        step=60
+                    )
+                    logs_version = "v2"
+                except Exception:
+                    logs_version = "v1"
+            
+            if logs_version == "v2":
+                table = "signoz_logs.distributed_logs_v2"
+                select_cols = "timestamp, observed_timestamp, id, body, severity_text, attributes_string, resources_string, trace_id, span_id"
+                # Use nanosecond timestamps and ts_bucket_start for better performance
+                start_nano = int(start_dt.timestamp() * 1_000_000_000)
+                end_nano = int(end_dt.timestamp() * 1_000_000_000)
+                where_clauses = [
+                    f"timestamp >= {start_nano}",
+                    f"timestamp <= {end_nano}",
+                    f"ts_bucket_start BETWEEN {int(start_dt.timestamp())} - 1800 AND {int(end_dt.timestamp())}"
+                ]
+                if service_name:
+                    where_clauses.append(f"resources_string['service.name'] = '{service_name}'")
+            else:  # v1 (legacy)
+                table = "signoz_logs.distributed_logs"
+                select_cols = "timestamp, body, severity_text, resource_attributes, trace_id, span_id"
+                where_clauses = [f"timestamp >= toDateTime64({int(start_dt.timestamp())}, 9)", f"timestamp < toDateTime64({int(end_dt.timestamp())}, 9)"]
+                if service_name:
+                    where_clauses.append(f"JSONExtractString(resource_attributes, 'service.name') = '{service_name}'")
         else:
             return {"status": "error", "message": f"Invalid data_type: {data_type}. Must be 'traces' or 'logs'."}
+            
         where_sql = " AND ".join(where_clauses)
         query = f"SELECT {select_cols} FROM {table} WHERE {where_sql} LIMIT {limit}"
         result = signoz_processor.execute_clickhouse_query_tool(
@@ -452,7 +490,17 @@ def fetch_signoz_traces_or_logs(data_type, start_time=None, end_time=None, durat
             fill_gaps=False,
             step=60
         )
-        return {"status": "success", "message": f"Fetched {data_type}", "data": result, "query": query}
+        
+        # Include schema version in response for debugging
+        schema_info = {"logs_schema_version": logs_version if data_type == "logs" else "N/A"}
+        
+        return {
+            "status": "success", 
+            "message": f"Fetched {data_type}", 
+            "data": result, 
+            "query": query,
+            "schema_info": schema_info
+        }
     except Exception as e:
         return {"status": "error", "message": f"Failed to fetch {data_type}: {e!s}"}
 
