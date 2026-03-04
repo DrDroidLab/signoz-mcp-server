@@ -171,5 +171,5 @@ The server runs on port 8000 by default.
 
 ## 5. Miscellaneous:
 
-1. Need help anywhere? Join our [slack community](https://join.slack.com/t/doctor-droid-demo/shared_invite/zt-2h6eap61w-Bmz76OEU6IykmDy673R1qQ) and message on #mcp channel.
+1. Need help anywhere? Join our [Discord community](https://discord.gg/AQ3tusPtZn) and ask in the #mcp channel.
 2. Want to try without setting up? Follow this [doc](https://docs.drdroid.io/getting-started/quickstart) for a quickstart on DrDroid cloud platform.
