@@ -1,5 +1,5 @@
 import pytest
-from src.signoz_mcp_server.processor.signoz_processor import SignozApiProcessor
+from signoz_mcp_server.processor.signoz_processor import SignozApiProcessor
 
 @pytest.fixture
 def processor(signoz_config):

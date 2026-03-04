@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.scripts]
-signoz-mcp-server = "src.signoz_mcp_server.mcp_server:main"
+signoz-mcp-server = "signoz_mcp_server.mcp_server:main"
 
 [project.optional-dependencies]
 prod = [

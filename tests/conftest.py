@@ -1,6 +1,6 @@
 import pytest
 import yaml
-from src.signoz_mcp_server.processor.signoz_processor import SignozApiProcessor
+from signoz_mcp_server.processor.signoz_processor import SignozApiProcessor
 import os
 from typing import Any, List, Optional
 
@@ -33,7 +33,7 @@ def app():
     """
     Provides a test instance of the Flask application.
     """
-    from src.signoz_mcp_server.mcp_server import app as flask_app
+    from signoz_mcp_server.mcp_server import app as flask_app
     flask_app.config.update({"TESTING": True})
     return flask_app
 
