@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/drdroidlab-signoz-mcp-server-badge.png)](https://mseep.ai/app/drdroidlab-signoz-mcp-server)
+
 # Signoz MCP Server
 
 Watch Working Demo on Cursor 📽️ https://youtube.com/shorts/jxjmGyXXz7A
